@@ -1,0 +1,11 @@
+{
+  "usingComponents": {
+    "top-nav": "../../components/top-nav/top-nav",
+    "voice-input": "../../components/voice-input/voice-input",
+    "timeline-item": "../../components/timeline-item/timeline-item"
+  },
+  "navigationStyle": "custom",
+  "navigationBarTitleText": "宝宝喂养记录",
+  "enablePullDownRefresh": true,
+  "backgroundTextStyle": "dark"
+}

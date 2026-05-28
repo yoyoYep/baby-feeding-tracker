@@ -1,0 +1,102 @@
+<top-nav title="我的" />
+
+<view class="container">
+  <!-- 宝宝信息卡 -->
+  <view class="card baby-card">
+    <view class="baby-avatar">👶</view>
+    <view class="baby-info">
+      <text class="baby-name">{{babyName || '设置宝宝信息'}}</text>
+      <text class="baby-age" wx:if="{{babyAge}}">{{babyAge}}</text>
+    </view>
+    <view class="edit-btn" bindtap="editBabyInfo">编辑</view>
+  </view>
+
+  <!-- 喂养配置 -->
+  <view class="card menu-card">
+    <view class="card-title">喂养配置</view>
+    <view class="menu-item" bindtap="setDefaultAmount">
+      <text class="menu-text">默认奶量</text>
+      <text class="menu-desc">{{defaultAmountText}}</text>
+      <text class="menu-arrow">›</text>
+    </view>
+    <view class="menu-item" bindtap="setFeedingInterval">
+      <text class="menu-text">喂奶间隔变红</text>
+      <text class="menu-desc">{{feedingIntervalText}}</text>
+      <text class="menu-arrow">›</text>
+    </view>
+  </view>
+
+  <!-- 功能列表 -->
+  <view class="card menu-card">
+    <view class="menu-item" bindtap="editBabyInfo">
+      <text class="menu-text">宝宝信息</text>
+      <text class="menu-arrow">›</text>
+    </view>
+    <view class="menu-item" bindtap="goFamily">
+      <text class="menu-text">家庭成员</text>
+      <text class="menu-desc" wx:if="{{myRole}}">我是{{myRole}}</text>
+      <text class="menu-arrow" wx:if="{{myRole === '妈妈'}}">›</text>
+    </view>
+    <view class="menu-item" bindtap="exportData">
+      <text class="menu-text">数据导出</text>
+      <text class="menu-arrow">›</text>
+    </view>
+  </view>
+
+  <view class="card menu-card">
+    <view class="menu-item" bindtap="goAbout">
+      <text class="menu-text">关于</text>
+      <text class="menu-arrow">›</text>
+    </view>
+  </view>
+
+  <!-- 宝宝信息编辑弹窗 -->
+  <view wx:if="{{showBabyEdit}}" class="edit-mask">
+    <view class="edit-mask-bg" bindtap="closeBabyEdit"></view>
+    <view class="edit-dialog" catchtap="">
+      <view class="edit-title">宝宝信息</view>
+
+      <view class="form-item">
+        <view class="form-label">昵称</view>
+        <input class="form-input" placeholder="宝宝的小名" value="{{editName}}" bindinput="onEditName" />
+      </view>
+
+      <view class="form-item">
+        <view class="form-label">出生日期</view>
+        <picker mode="date" value="{{editBirthday}}" bindchange="onBirthdayChange">
+          <view class="form-input picker">{{editBirthday || '选择出生日期'}}</view>
+        </picker>
+      </view>
+
+      <view class="form-item">
+        <view class="form-label">性别</view>
+        <view class="tag-group">
+          <view class="tag {{editGender === 'male' ? 'active' : ''}}" bindtap="setGender" data-val="male">男宝</view>
+          <view class="tag {{editGender === 'female' ? 'active' : ''}}" bindtap="setGender" data-val="female">女宝</view>
+        </view>
+      </view>
+
+      <button class="btn-primary save-btn" bindtap="saveBabyInfo">保存</button>
+    </view>
+  </view>
+
+  <!-- 家庭成员弹窗 -->
+  <view wx:if="{{showFamily}}" class="edit-mask">
+    <view class="edit-mask-bg" bindtap="closeFamily"></view>
+    <view class="edit-dialog family-dialog" catchtap="noop">
+      <view class="edit-title">家庭成员</view>
+      <view class="family-list">
+        <view class="family-item" wx:for="{{familyMembers}}" wx:key="_id">
+          <view class="family-info">
+            <view class="family-role">{{item.nickname || item.role}}</view>
+            <view class="family-name" wx:if="{{item.displayName}}">{{item.displayName}}</view>
+          </view>
+          <view class="family-edit" catchtap="editMemberRole" data-id="{{item._id}}" data-role="{{item.role}}">修改</view>
+        </view>
+      </view>
+      <view wx:if="{{familyMembers.length === 0}}" class="empty-tip">
+        <text>暂无其他成员</text>
+      </view>
+    </view>
+  </view>
+</view>

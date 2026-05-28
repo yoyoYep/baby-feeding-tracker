@@ -1,0 +1,191 @@
+.baby-card {
+  display: flex;
+  align-items: center;
+}
+
+.baby-avatar {
+  font-size: 60rpx;
+  margin-right: 20rpx;
+}
+
+.baby-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.baby-name {
+  font-size: 32rpx;
+  font-weight: 600;
+}
+
+.baby-age {
+  font-size: 24rpx;
+  color: #999;
+  margin-top: 4rpx;
+}
+
+.edit-btn {
+  font-size: 24rpx;
+  color: #FF9AA2;
+  padding: 8rpx 20rpx;
+  border: 1rpx solid #FF9AA2;
+  border-radius: 20rpx;
+}
+
+/* 菜单 */
+.menu-card {
+  padding: 0;
+}
+
+.card-title {
+  font-size: 24rpx;
+  color: #999;
+  padding: 20rpx 30rpx 0;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 30rpx;
+  border-bottom: 1rpx solid #f8f8f8;
+}
+
+.menu-item:last-child {
+  border-bottom: none;
+}
+
+.menu-text {
+  font-size: 28rpx;
+}
+
+.menu-arrow {
+  font-size: 32rpx;
+  color: #ccc;
+}
+
+.menu-desc {
+  font-size: 24rpx;
+  color: #999;
+  margin-left: auto;
+  margin-right: 12rpx;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+}
+
+/* 编辑弹窗 */
+.edit-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.edit-mask-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.edit-dialog {
+  position: relative;
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 40rpx;
+  width: 80%;
+  z-index: 1;
+}
+
+.edit-title {
+  font-size: 34rpx;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 30rpx;
+}
+
+.tag-group {
+  display: flex;
+  gap: 16rpx;
+}
+
+.save-btn {
+  margin-top: 30rpx;
+  width: 100% !important;
+}
+
+/* 家庭成员 */
+.family-dialog {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.family-list {
+  margin-bottom: 30rpx;
+}
+
+.family-item {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.family-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.family-role {
+  font-size: 30rpx;
+  color: #222;
+}
+
+.family-name {
+  font-size: 24rpx;
+  color: #999;
+  margin-top: 4rpx;
+}
+
+.family-badge {
+  font-size: 22rpx;
+  color: #FF9AA2;
+  background: #FFF5F5;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  margin-right: 16rpx;
+}
+
+.family-remove {
+  font-size: 24rpx;
+  color: #FF4D4F;
+}
+
+.family-edit {
+  font-size: 24rpx;
+  color: #FF9AA2;
+  padding: 6rpx 16rpx;
+  border: 1rpx solid #FF9AA2;
+  border-radius: 8rpx;
+}
+
+.invite-btn {
+  width: 100% !important;
+  margin-top: 20rpx;
+  border-radius: 50rpx !important;
+  background: linear-gradient(135deg, #FF9AA2, #FFB7B2) !important;
+  color: #fff !important;
+  border: none !important;
+}

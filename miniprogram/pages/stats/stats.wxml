@@ -1,0 +1,164 @@
+<top-nav title="数据统计" />
+
+<view class="container">
+  <!-- 日期选择 -->
+  <view class="date-bar">
+    <view class="date-btn" bindtap="prevDay">‹</view>
+    <view class="date-text">{{dateText}}</view>
+    <view class="date-btn" bindtap="nextDay">›</view>
+  </view>
+
+  <!-- Tab 切换 -->
+  <view class="tab-bar">
+    <view class="tab-item {{activeTab === 'day' ? 'active' : ''}}" data-tab="day" bindtap="switchTab">当日统计</view>
+    <view class="tab-item {{activeTab === 'week' ? 'active' : ''}}" data-tab="week" bindtap="switchTab">最近7天</view>
+  </view>
+
+  <!-- Loading -->
+  <view wx:if="{{loading}}" class="loading-wrap">
+    <view class="loading-dot"></view>
+    <text class="loading-text">加载中...</text>
+  </view>
+
+  <!-- 当日视图 -->
+  <block wx:if="{{activeTab === 'day' && !loading}}">
+    <view class="card">
+      <view class="card-header">
+        <view class="card-icon feeding-icon">🍼</view>
+        <text class="card-title">喂奶统计</text>
+      </view>
+      <view class="stats-row">
+        <view class="stats-item">
+          <text class="stats-num feeding-color">{{feedingStats.count}}</text>
+          <text class="stats-label">次数</text>
+        </view>
+        <view class="stats-item">
+          <text class="stats-num feeding-color">{{feedingStats.totalAmount}}</text>
+          <text class="stats-label">总奶量(ml)</text>
+        </view>
+        <view class="stats-item">
+          <text class="stats-num feeding-color">{{feedingStats.avgInterval}}</text>
+          <text class="stats-label">平均间隔(h)</text>
+        </view>
+        <view class="stats-item">
+          <text class="stats-num feeding-color">{{feedingStats.avgDuration}}</text>
+          <text class="stats-label">平均耗时(min)</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="card-header">
+        <view class="card-icon sleep-icon">💤</view>
+        <text class="card-title">睡眠统计</text>
+      </view>
+      <view class="stats-row">
+        <view class="stats-item">
+          <text class="stats-num sleep-color">{{sleepStats.totalHours}}</text>
+          <text class="stats-label">总时长(h)</text>
+        </view>
+        <view class="stats-item">
+          <text class="stats-num sleep-color">{{sleepStats.napCount}}</text>
+          <text class="stats-label">小睡次数</text>
+        </view>
+        <view class="stats-item">
+          <text class="stats-num sleep-color">{{sleepStats.nightHours}}</text>
+          <text class="stats-label">夜觉(h)</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="card-header">
+        <view class="card-icon diaper-icon">🧷</view>
+        <text class="card-title">排便统计</text>
+      </view>
+      <view class="stats-row">
+        <view class="stats-item">
+          <text class="stats-num diaper-color">{{diaperStats.peeCount}}</text>
+          <text class="stats-label">小便</text>
+        </view>
+        <view class="stats-item">
+          <text class="stats-num diaper-color">{{diaperStats.poopCount}}</text>
+          <text class="stats-label">大便</text>
+        </view>
+        <view class="stats-item">
+          <text class="stats-num diaper-color">{{diaperStats.total}}</text>
+          <text class="stats-label">总计</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 无数据提示 -->
+    <view wx:if="{{feedingStats.count === 0 && sleepStats.napCount === 0 && diaperStats.total === 0}}" class="empty-tip">
+      <text>当日暂无记录，去首页添加吧</text>
+    </view>
+  </block>
+
+  <!-- 7天趋势视图 -->
+  <block wx:if="{{activeTab === 'week' && !loading}}">
+    <view class="card">
+      <view class="card-header">
+        <view class="card-icon feeding-icon">🍼</view>
+        <text class="card-title">喂奶量趋势 (ml)</text>
+      </view>
+      <view class="chart-bar-group">
+        <view wx:for="{{weekFeeding}}" wx:key="label" class="chart-bar-item">
+          <text class="chart-bar-value">{{item.value || ''}}</text>
+          <view class="chart-bar-track">
+            <view class="chart-bar feeding-bar" style="height: {{item.percent}}%"></view>
+          </view>
+          <text class="chart-bar-label">{{item.label}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="card-header">
+        <view class="card-icon sleep-icon">💤</view>
+        <text class="card-title">睡眠时长趋势 (h)</text>
+      </view>
+      <view class="chart-bar-group">
+        <view wx:for="{{weekSleep}}" wx:key="label" class="chart-bar-item">
+          <text class="chart-bar-value">{{item.value || ''}}</text>
+          <view class="chart-bar-track">
+            <view class="chart-bar sleep-bar" style="height: {{item.percent}}%"></view>
+          </view>
+          <text class="chart-bar-label">{{item.label}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="card-header">
+        <view class="card-icon diaper-icon">🧷</view>
+        <text class="card-title">排便次数趋势</text>
+      </view>
+      <view class="chart-bar-group">
+        <view wx:for="{{weekDiaper}}" wx:key="label" class="chart-bar-item">
+          <text class="chart-bar-value">{{item.value || ''}}</text>
+          <view class="chart-bar-track">
+            <view class="chart-bar diaper-bar" style="height: {{item.percent}}%"></view>
+          </view>
+          <text class="chart-bar-label">{{item.label}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{weekFeeding.length === 0}}" class="empty-tip">
+      <text>暂无数据</text>
+    </view>
+  </block>
+
+  <!-- 生长曲线入口 -->
+  <view class="card growth-entry" bindtap="goGrowth">
+    <view class="growth-entry-left">
+      <text class="growth-entry-icon">📏</text>
+      <view class="growth-entry-text">
+        <text class="growth-entry-title">生长曲线</text>
+        <text class="growth-entry-desc">查看体重/身高/头围趋势与WHO标准对比</text>
+      </view>
+    </view>
+    <text class="growth-entry-arrow">›</text>
+  </view>
+</view>

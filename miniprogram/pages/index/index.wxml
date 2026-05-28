@@ -1,0 +1,201 @@
+<top-nav title="宝宝喂养记录" />
+
+<view class="container">
+  <!-- 进行中状态 -->
+  <view wx:if="{{ongoingFeeding}}" class="card ongoing-card feeding-ongoing" bindtap="goToFeeding">
+    <view class="ongoing-icon">🍼</view>
+    <view class="ongoing-info">
+      <text class="ongoing-title">正在喂奶中...</text>
+      <text class="ongoing-time">已用时 {{feedingElapsed}}</text>
+    </view>
+    <view class="ongoing-actions">
+      <view class="ongoing-action secondary" catchtap="cancelOngoingFeeding">取消</view>
+      <view class="ongoing-action" catchtap="goToFeeding">去结束</view>
+    </view>
+  </view>
+
+  <view wx:if="{{ongoingSleep}}" class="card ongoing-card sleep-ongoing" bindtap="goToSleep">
+    <view class="ongoing-icon">💤</view>
+    <view class="ongoing-info">
+      <text class="ongoing-title">宝宝正在睡觉...</text>
+      <text class="ongoing-time">已睡 {{sleepElapsed}}</text>
+    </view>
+    <view class="ongoing-actions">
+      <view class="ongoing-action secondary" catchtap="cancelOngoingSleep">取消</view>
+      <view class="ongoing-action" catchtap="goToSleep">醒了</view>
+    </view>
+  </view>
+
+  <view wx:if="{{delayedFeeding}}" class="card delayed-feeding-card">
+    <view class="delayed-icon">⏱</view>
+    <view class="ongoing-info">
+      <text class="ongoing-title">喂奶倒计时</text>
+      <text class="ongoing-time">{{delayedFeedingLeft}} 后开始（{{delayedFeeding.timeLabel}}）</text>
+    </view>
+    <view class="ongoing-action" catchtap="cancelDelayedFeeding">取消</view>
+  </view>
+
+  <!-- 今日统计 -->
+  <view class="card stats-card">
+    <view class="stats-grid">
+      <view class="stat-item">
+        <view class="stat-icon">🍼</view>
+        <text class="stat-value">{{todayStats.feedingCount}}</text>
+        <text class="stat-label">喂奶(次)</text>
+      </view>
+      <view class="stat-item">
+        <view class="stat-icon">💧</view>
+        <text class="stat-value">{{todayStats.totalAmount}}</text>
+        <text class="stat-label">总奶量(ml)</text>
+      </view>
+      <view class="stat-item">
+        <view class="stat-icon">🧷</view>
+        <text class="stat-value">{{todayStats.diaperCount}}</text>
+        <text class="stat-label">换尿布(次)</text>
+      </view>
+      <view class="stat-item">
+        <view class="stat-icon">💤</view>
+        <text class="stat-value">{{todayStats.sleepHours}}</text>
+        <text class="stat-label">睡眠(h)</text>
+      </view>
+    </view>
+    <view class="quick-start-row">
+      <view class="quick-start-btn feeding {{ongoingFeeding ? 'active' : ''}} {{delayedFeeding ? 'pending' : ''}}" bindtap="onQuickFeeding">
+        <view class="quick-start-icon">🍼</view>
+        <view class="quick-start-copy">
+          <text class="quick-start-title">{{ongoingFeeding ? '完成喂奶' : (delayedFeeding ? '立即开始' : '开始喂奶')}}</text>
+          <text class="quick-start-desc">{{ongoingFeeding ? (defaultFeedingAmount ? ('默认' + defaultFeedingAmount + 'ml') : '填奶量') : (delayedFeeding ? (delayedFeedingLeft + '后开始') : '一键计时')}}</text>
+        </view>
+      </view>
+      <view class="quick-start-btn sleep {{ongoingSleep ? 'active' : ''}}" bindtap="onQuickSleep">
+        <view class="quick-start-icon">💤</view>
+        <view class="quick-start-copy">
+          <text class="quick-start-title">{{ongoingSleep ? '宝宝醒了' : '开始睡觉'}}</text>
+          <text class="quick-start-desc">{{ongoingSleep ? (sleepElapsed || '醒了') : '一键计时'}}</text>
+        </view>
+      </view>
+    </view>
+    <!-- 平均间隔 + 距上次喂奶 -->
+    <view class="feeding-info">
+      <view class="feeding-info-item" wx:if="{{todayStats.avgInterval}}">
+        <text class="feeding-info-label">平均间隔</text>
+        <text class="feeding-info-value">{{todayStats.avgInterval}}</text>
+      </view>
+      <view class="feeding-info-item" wx:if="{{lastFeedingAgo}}">
+        <text class="feeding-info-label">距上次喂奶</text>
+        <text class="feeding-info-value {{feedingOverdue ? 'overdue' : 'normal'}}">{{lastFeedingAgo}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 日期选择 + 时间线 -->
+  <view class="card timeline-card">
+    <view class="date-nav">
+      <view class="date-arrow" bindtap="prevDay">‹</view>
+      <picker mode="date" value="{{currentDateStr}}" bindchange="onDatePick">
+        <view class="date-text">{{dateLabel}}</view>
+      </picker>
+      <view class="date-arrow {{isToday ? 'disabled' : ''}}" bindtap="nextDay">›</view>
+      <view wx:if="{{!isToday}}" class="back-today" bindtap="goToday">回到今天</view>
+    </view>
+    <view class="card-header">
+      <text class="record-count">{{timeline.length}}条记录</text>
+    </view>
+    <view wx:if="{{timeline.length === 0}}" class="empty-tip">
+      <text>{{isToday ? '还没有记录，试试语音快速添加吧~' : '当天没有记录'}}</text>
+    </view>
+    <view wx:else>
+      <timeline-item wx:for="{{timeline}}" wx:key="_id" item="{{item}}" bind:more="onTimelineItemMore" bind:delete="onSwipeDelete" />
+    </view>
+  </view>
+</view>
+
+<!-- 底部操作区（语音 + 快捷入口） -->
+<view class="bottom-bar">
+  <view class="bottom-add" bindtap="showQuickActions">
+    <text>+</text>
+  </view>
+  <view class="bottom-voice">
+    <voice-input bind:record="onVoiceRecord" bind:edit="onVoiceEdit" />
+  </view>
+</view>
+
+<!-- 快捷操作面板 -->
+<view wx:if="{{showActions}}" class="action-mask" bindtap="hideQuickActions">
+  <view class="action-sheet" catchtap="">
+    <view class="action-item" bindtap="quickRecord" data-type="feeding">
+      <view class="action-icon feeding-icon">🍼</view>
+      <text>喂奶</text>
+    </view>
+    <view class="action-item" bindtap="quickRecord" data-type="diaper">
+      <view class="action-icon diaper-icon">🧷</view>
+      <text>换尿布</text>
+    </view>
+    <view class="action-item" bindtap="quickRecord" data-type="sleep">
+      <view class="action-icon sleep-icon">💤</view>
+      <text>睡眠</text>
+    </view>
+    <view class="action-item" bindtap="quickRecord" data-type="bath">
+      <view class="action-icon bath-icon">🛁</view>
+      <text>洗澡</text>
+    </view>
+    <view class="action-item" bindtap="goHealth">
+      <view class="action-icon health-icon">🏥</view>
+      <text>健康</text>
+    </view>
+    <view class="action-item" bindtap="showGrowthForm">
+      <view class="action-icon growth-icon">📏</view>
+      <text>身高体重</text>
+    </view>
+    <view class="action-item" bindtap="quickRecord" data-type="supplement">
+      <view class="action-icon supplement-icon">🥣</view>
+      <text>辅食</text>
+    </view>
+  </view>
+</view>
+
+<!-- 健康编辑弹窗 -->
+<view wx:if="{{showHealthForm}}" class="growth-mask">
+  <view class="growth-mask-bg" bindtap="hideHealthForm"></view>
+  <view class="growth-dialog" catchtap="">
+    <!-- 体温编辑 -->
+    <view wx:if="{{healthType === 'temp'}}">
+      <view class="growth-title">编辑体温</view>
+      <view class="growth-form-item">
+        <text class="growth-label">体温 (°C)</text>
+        <input class="growth-input" type="digit" placeholder="如 37.2" value="{{healthTemp}}" bindinput="onHealthTemp" />
+      </view>
+      <view class="growth-form-item">
+        <text class="growth-label">测量方式</text>
+        <view class="health-tags">
+          <view class="health-tag {{healthTempMethod === 'forehead' ? 'active' : ''}}" bindtap="setHealthTempMethod" data-val="forehead">额温</view>
+          <view class="health-tag {{healthTempMethod === 'ear' ? 'active' : ''}}" bindtap="setHealthTempMethod" data-val="ear">耳温</view>
+          <view class="health-tag {{healthTempMethod === 'armpit' ? 'active' : ''}}" bindtap="setHealthTempMethod" data-val="armpit">腋温</view>
+        </view>
+      </view>
+    </view>
+    <!-- 用药编辑 -->
+    <view wx:if="{{healthType === 'med'}}">
+      <view class="growth-title">编辑用药</view>
+      <view class="growth-form-item">
+        <text class="growth-label">药品名称</text>
+        <input class="growth-input" placeholder="如 布洛芬" value="{{healthMedName}}" bindinput="onHealthMedName" />
+      </view>
+      <view class="growth-form-item">
+        <text class="growth-label">剂量</text>
+        <input class="growth-input" type="digit" placeholder="如 2.5" value="{{healthMedDosage}}" bindinput="onHealthMedDosage" />
+      </view>
+      <view class="growth-form-item">
+        <text class="growth-label">单位</text>
+        <view class="health-tags">
+          <view class="health-tag {{healthMedUnit === 'ml' ? 'active' : ''}}" bindtap="setHealthMedUnit" data-val="ml">ml</view>
+          <view class="health-tag {{healthMedUnit === '包' ? 'active' : ''}}" bindtap="setHealthMedUnit" data-val="包">包</view>
+          <view class="health-tag {{healthMedUnit === '片' ? 'active' : ''}}" bindtap="setHealthMedUnit" data-val="片">片</view>
+          <view class="health-tag {{healthMedUnit === '滴' ? 'active' : ''}}" bindtap="setHealthMedUnit" data-val="滴">滴</view>
+          <view class="health-tag {{healthMedUnit === '粒' ? 'active' : ''}}" bindtap="setHealthMedUnit" data-val="粒">粒</view>
+        </view>
+      </view>
+    </view>
+    <button class="btn-primary growth-save-btn" bindtap="saveHealth">保存</button>
+  </view>
+</view>

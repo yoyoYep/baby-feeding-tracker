@@ -1,0 +1,9 @@
+{
+  "usingComponents": {
+    "top-nav": "../../components/top-nav/top-nav",
+    "timer": "../../components/timer/timer",
+    "voice-input": "../../components/voice-input/voice-input"
+  },
+  "navigationStyle": "custom",
+  "navigationBarTitleText": "添加记录"
+}

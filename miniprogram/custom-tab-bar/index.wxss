@@ -1,0 +1,38 @@
+.tab-bar {
+  display: flex;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60rpx;
+  background: #fff;
+  border-top: 1rpx solid #e5e5e5;
+  padding-bottom: env(safe-area-inset-bottom);
+  z-index: 999;
+}
+
+.tab-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-top: 10rpx;
+}
+
+.tab-icon {
+  width: 48rpx;
+  height: 48rpx;
+  margin-bottom: 6rpx;
+}
+
+.tab-text {
+  font-size: 28rpx;
+  color: #999;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.tab-text.active {
+  color: #FF9AA2;
+  font-weight: 500;
+}

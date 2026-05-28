@@ -1,0 +1,9 @@
+{
+  "name": "parseRecord",
+  "version": "1.0.0",
+  "description": "调用DeepSeek解析自然语言喂养记录",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

@@ -1,0 +1,41 @@
+<view class="voice-wrap">
+  <!-- 语音横条按钮 -->
+  <view class="voice-bar {{recording ? 'recording' : ''}}" bindtap="toggleRecord">
+    <text wx:if="{{!recording}}" class="bar-text">🎤  点击说话</text>
+    <view wx:else class="bar-recording">
+      <view class="recording-wave">
+        <view class="wave-bar" wx:for="{{[1,2,3,4,5]}}" wx:key="*this"
+          style="animation-delay: {{item * 0.1}}s"></view>
+      </view>
+      <text class="bar-text">{{recordingTime}}s 点击结束</text>
+    </view>
+  </view>
+  <view class="keyboard-btn" bindtap="manualInput">
+    <text>⌨</text>
+  </view>
+
+  <!-- 识别/解析中加载态 -->
+  <view wx:if="{{parsing}}" class="parsing-mask">
+    <view class="parsing-dialog">
+      <view class="parsing-spinner"></view>
+      <text class="parsing-text">{{parsingText}}</text>
+    </view>
+  </view>
+
+  <!-- 识别结果确认弹窗 -->
+  <view wx:if="{{showConfirm}}" class="confirm-mask" bindtap="cancelConfirm">
+    <view class="confirm-dialog" catchtap="">
+      <view class="confirm-title">识别结果</view>
+      <view class="confirm-content">{{confirmText}}</view>
+      <view class="confirm-raw" wx:if="{{rawText}}">
+        <text class="raw-label">原文：</text>
+        <text>{{rawText}}</text>
+      </view>
+      <view class="confirm-btns">
+        <button class="confirm-btn cancel" bindtap="cancelConfirm">取消</button>
+        <button class="confirm-btn edit" bindtap="editRecord">编辑</button>
+        <button class="confirm-btn ok" bindtap="confirmRecord">确认</button>
+      </view>
+    </view>
+  </view>
+</view>

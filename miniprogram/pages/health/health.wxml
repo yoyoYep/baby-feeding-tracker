@@ -1,0 +1,134 @@
+<top-nav title="健康" show-back="{{true}}" />
+
+<view class="container">
+  <!-- 当前体温状态 -->
+  <view class="card temp-status-card">
+    <view class="temp-current" wx:if="{{lastTemp}}">
+      <text class="temp-value {{tempLevel}}">{{lastTemp.value}}°C</text>
+      <text class="temp-ago">{{lastTempAgo}}</text>
+    </view>
+    <view class="temp-current" wx:else>
+      <text class="temp-placeholder">暂无体温记录</text>
+    </view>
+  </view>
+
+  <!-- Tab切换 -->
+  <view class="tab-bar">
+    <view class="tab-item {{activeTab === 'temp' ? 'active' : ''}}" bindtap="switchTab" data-tab="temp">体温</view>
+    <view class="tab-item {{activeTab === 'med' ? 'active' : ''}}" bindtap="switchTab" data-tab="med">用药</view>
+  </view>
+
+  <!-- 体温记录 -->
+  <view wx:if="{{activeTab === 'temp'}}">
+    <view class="card">
+      <view class="form-item">
+        <view class="form-label">体温 (°C)</view>
+        <input class="form-input temp-input" type="digit" placeholder="如 37.2"
+          value="{{tempValue}}" bindinput="onTempInput" />
+      </view>
+
+      <view class="form-item">
+        <view class="form-label">测量方式</view>
+        <view class="tag-group">
+          <view class="tag {{tempMethod === 'forehead' ? 'active' : ''}}" bindtap="setTempMethod" data-val="forehead">额温</view>
+          <view class="tag {{tempMethod === 'ear' ? 'active' : ''}}" bindtap="setTempMethod" data-val="ear">耳温</view>
+          <view class="tag {{tempMethod === 'armpit' ? 'active' : ''}}" bindtap="setTempMethod" data-val="armpit">腋温</view>
+        </view>
+      </view>
+
+      <button class="btn-primary save-btn" bindtap="saveTempRecord">记录体温</button>
+    </view>
+
+    <!-- 体温历史 -->
+    <view class="card">
+      <view class="card-header">
+        <text class="card-title">体温记录</text>
+      </view>
+      <view wx:if="{{tempHistory.length === 0}}" class="empty-tip">暂无记录</view>
+      <view wx:else class="history-list">
+        <view class="history-item" wx:for="{{tempHistory}}" wx:key="_id">
+          <view class="history-left">
+            <text class="history-value {{item.level}}">{{item.data.value}}°C</text>
+            <text class="history-method">{{item.methodText}}</text>
+          </view>
+          <text class="history-time">{{item.timeStr}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 用药记录 -->
+  <view wx:if="{{activeTab === 'med'}}">
+    <!-- 历史药品快选 -->
+    <view class="card" wx:if="{{medHistory.length > 0}}">
+      <view class="card-header">
+        <text class="card-title">最近用药</text>
+        <text class="card-hint">点击快速记录</text>
+      </view>
+      <view class="med-quick-list">
+        <view class="med-quick-item" wx:for="{{medHistory}}" wx:key="_id" bindtap="quickSelectMed" data-index="{{index}}">
+          <view class="med-name">{{item.name}}</view>
+          <view class="med-dosage">{{item.lastDosage}}{{item.lastUnit}}</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 用药表单 -->
+    <view class="card">
+      <view class="form-item">
+        <view class="form-label">药品名称</view>
+        <input class="form-input" placeholder="输入药品名称"
+          value="{{medName}}" bindinput="onMedNameInput" />
+      </view>
+
+      <view class="form-item">
+        <view class="form-label">剂量</view>
+        <view class="dosage-row">
+          <input class="form-input dosage-input" type="digit" placeholder="用量"
+            value="{{medDosage}}" bindinput="onMedDosageInput" />
+          <view class="unit-group">
+            <view class="tag {{medUnit === 'ml' ? 'active' : ''}}" bindtap="setMedUnit" data-val="ml">ml</view>
+            <view class="tag {{medUnit === '包' ? 'active' : ''}}" bindtap="setMedUnit" data-val="包">包</view>
+            <view class="tag {{medUnit === '片' ? 'active' : ''}}" bindtap="setMedUnit" data-val="片">片</view>
+            <view class="tag {{medUnit === '滴' ? 'active' : ''}}" bindtap="setMedUnit" data-val="滴">滴</view>
+            <view class="tag {{medUnit === '粒' ? 'active' : ''}}" bindtap="setMedUnit" data-val="粒">粒</view>
+          </view>
+        </view>
+      </view>
+
+      <view class="form-item">
+        <view class="form-label">用药方式</view>
+        <view class="tag-group">
+          <view class="tag {{medMethod === 'oral' ? 'active' : ''}}" bindtap="setMedMethod" data-val="oral">口服</view>
+          <view class="tag {{medMethod === 'external' ? 'active' : ''}}" bindtap="setMedMethod" data-val="external">外用</view>
+          <view class="tag {{medMethod === 'nebulize' ? 'active' : ''}}" bindtap="setMedMethod" data-val="nebulize">雾化</view>
+          <view class="tag {{medMethod === 'rectal' ? 'active' : ''}}" bindtap="setMedMethod" data-val="rectal">塞肛</view>
+        </view>
+      </view>
+
+      <view class="form-item">
+        <view class="form-label">备注</view>
+        <input class="form-input" placeholder="可选，如饭后服用" value="{{medNote}}" bindinput="onMedNoteInput" />
+      </view>
+
+      <button class="btn-primary save-btn" bindtap="saveMedRecord">记录用药</button>
+    </view>
+
+    <!-- 今日用药历史 -->
+    <view class="card">
+      <view class="card-header">
+        <text class="card-title">今日用药</text>
+      </view>
+      <view wx:if="{{todayMeds.length === 0}}" class="empty-tip">今日暂未用药</view>
+      <view wx:else class="history-list">
+        <view class="history-item" wx:for="{{todayMeds}}" wx:key="_id">
+          <view class="history-left">
+            <text class="history-value">{{item.data.name}}</text>
+            <text class="history-method">{{item.data.dosage}}{{item.data.unit}} · {{item.methodText}}</text>
+          </view>
+          <text class="history-time">{{item.timeStr}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

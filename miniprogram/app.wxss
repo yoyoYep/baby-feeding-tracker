@@ -1,0 +1,93 @@
+@import './styles/weui.wxss';
+
+page {
+  background-color: #F8F8F8;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 32rpx;
+  color: #222;
+  box-sizing: border-box;
+}
+
+.container {
+  padding: 20rpx 30rpx;
+  padding-bottom: 320rpx;
+}
+
+/* 通用卡片样式 */
+.card {
+  background: #fff;
+  border-radius: 20rpx;
+  padding: 30rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+}
+
+/* 主题色 */
+.text-primary { color: #FF9AA2; }
+.bg-primary { background-color: #FF9AA2; }
+
+/* 按钮样式 */
+.btn-primary {
+  background: linear-gradient(135deg, #FF9AA2, #FFB7B2);
+  color: #fff;
+  border: none;
+  border-radius: 50rpx;
+  padding: 20rpx 60rpx;
+  font-size: 32rpx;
+  font-weight: 500;
+}
+
+.btn-secondary {
+  background: #f5f5f5;
+  color: #555;
+  border: none;
+  border-radius: 50rpx;
+  padding: 20rpx 60rpx;
+  font-size: 32rpx;
+}
+
+/* 标签选择 */
+.tag {
+  display: inline-block;
+  padding: 12rpx 28rpx;
+  border-radius: 30rpx;
+  background: #f5f5f5;
+  color: #555;
+  font-size: 28rpx;
+  margin: 8rpx;
+}
+
+.tag.active {
+  background: #FFF0F0;
+  color: #FF9AA2;
+  border: 1rpx solid #FF9AA2;
+}
+
+/* 表单 */
+.form-item {
+  margin-bottom: 30rpx;
+}
+
+.form-label {
+  font-size: 28rpx;
+  color: #666;
+  margin-bottom: 12rpx;
+}
+
+.form-input {
+  background: #f8f8f8;
+  border-radius: 12rpx;
+  padding: 20rpx 24rpx;
+  font-size: 32rpx;
+}
+
+/* 时间线 */
+.timeline-item {
+  display: flex;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.timeline-item:last-child {
+  border-bottom: none;
+}

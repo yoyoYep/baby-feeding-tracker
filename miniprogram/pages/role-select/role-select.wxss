@@ -1,0 +1,79 @@
+.container {
+  padding: 60rpx 40rpx;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 60rpx;
+}
+
+.title {
+  font-size: 44rpx;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 16rpx;
+}
+
+.subtitle {
+  font-size: 26rpx;
+  color: #999;
+}
+
+.role-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24rpx;
+  margin-bottom: 40rpx;
+}
+
+.role-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 30rpx 20rpx;
+  background: #f8f8f8;
+  border-radius: 20rpx;
+  border: 4rpx solid transparent;
+  transition: all 0.2s;
+}
+
+.role-item.active {
+  background: #FFF5F5;
+  border-color: #FF9AA2;
+}
+
+.role-emoji {
+  font-size: 56rpx;
+  margin-bottom: 12rpx;
+}
+
+.role-name {
+  font-size: 28rpx;
+  color: #333;
+}
+
+.custom-input-wrap {
+  margin-bottom: 40rpx;
+}
+
+.custom-input {
+  border: 2rpx solid #e0e0e0;
+  border-radius: 12rpx;
+  padding: 20rpx 24rpx;
+  font-size: 28rpx;
+}
+
+.confirm-btn {
+  width: 100% !important;
+  margin-top: 40rpx;
+  border-radius: 50rpx !important;
+  background: linear-gradient(135deg, #FF9AA2, #FFB7B2) !important;
+  color: #fff !important;
+  font-size: 32rpx !important;
+  padding: 24rpx 0 !important;
+  border: none !important;
+}
+
+.confirm-btn[disabled] {
+  opacity: 0.5;
+}

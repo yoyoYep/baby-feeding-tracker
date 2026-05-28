@@ -1,0 +1,196 @@
+.voice-wrap {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+/* 横条按钮 */
+.voice-bar {
+  flex: 1;
+  height: 80rpx;
+  border-radius: 40rpx;
+  background: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.voice-bar.recording {
+  background: #FFEBEE;
+  box-shadow: 0 0 0 4rpx rgba(255, 154, 162, 0.3);
+}
+
+.bar-text {
+  font-size: 30rpx;
+  color: #555;
+}
+
+.voice-bar.recording .bar-text {
+  color: #FF9AA2;
+  font-weight: 500;
+}
+
+.bar-recording {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+/* 录音波形动画 */
+.recording-wave {
+  display: flex;
+  align-items: center;
+  height: 36rpx;
+  gap: 4rpx;
+}
+
+/* 键盘按钮 */
+.keyboard-btn {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 50%;
+  background: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.keyboard-btn text {
+  font-size: 32rpx;
+}
+
+.wave-bar {
+  width: 6rpx;
+  height: 16rpx;
+  background: #FF9AA2;
+  border-radius: 3rpx;
+  animation: wave 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes wave {
+  from { height: 10rpx; }
+  to { height: 36rpx; }
+}
+
+/* 解析中加载态 */
+.parsing-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.parsing-dialog {
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 60rpx 80rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30rpx;
+}
+
+.parsing-spinner {
+  width: 60rpx;
+  height: 60rpx;
+  border: 6rpx solid #f0f0f0;
+  border-top-color: #FF9AA2;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.parsing-text {
+  font-size: 28rpx;
+  color: #666;
+}
+
+/* 确认弹窗 */
+.confirm-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.confirm-dialog {
+  background: #fff;
+  border-radius: 24rpx;
+  width: 80%;
+  padding: 40rpx;
+}
+
+.confirm-title {
+  font-size: 34rpx;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 30rpx;
+}
+
+.confirm-content {
+  font-size: 32rpx;
+  color: #222;
+  text-align: center;
+  padding: 30rpx 20rpx;
+  background: #FFF0F0;
+  border-radius: 12rpx;
+  margin-bottom: 20rpx;
+}
+
+.confirm-raw {
+  font-size: 24rpx;
+  color: #999;
+  text-align: center;
+  margin-bottom: 30rpx;
+}
+
+.raw-label {
+  color: #bbb;
+}
+
+.confirm-btns {
+  display: flex;
+  gap: 20rpx;
+}
+
+.confirm-btn {
+  flex: 1;
+  border-radius: 50rpx !important;
+  padding: 18rpx 0 !important;
+  font-size: 28rpx !important;
+  border: none !important;
+}
+
+.confirm-btn.cancel {
+  background: #f5f5f5 !important;
+  color: #666 !important;
+}
+
+.confirm-btn.edit {
+  background: #fff !important;
+  color: #FF9AA2 !important;
+  border: 2rpx solid #FF9AA2 !important;
+}
+
+.confirm-btn.ok {
+  background: linear-gradient(135deg, #FF9AA2, #FFB7B2) !important;
+  color: #fff !important;
+}

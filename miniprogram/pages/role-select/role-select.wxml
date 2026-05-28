@@ -1,0 +1,50 @@
+<top-nav title="选择身份" />
+
+<view class="container">
+  <view class="header">
+    <view class="title">你是宝宝的...</view>
+    <view class="subtitle">选择你的身份，方便记录谁在照顾宝宝</view>
+  </view>
+
+  <view class="role-grid">
+    <view class="role-item {{selectedRole === '爸爸' ? 'active' : ''}}" bindtap="selectRole" data-role="爸爸">
+      <text class="role-emoji">👨</text>
+      <text class="role-name">爸爸</text>
+    </view>
+    <view class="role-item {{selectedRole === '妈妈' ? 'active' : ''}}" bindtap="selectRole" data-role="妈妈">
+      <text class="role-emoji">👩</text>
+      <text class="role-name">妈妈</text>
+    </view>
+    <view class="role-item {{selectedRole === '爷爷' ? 'active' : ''}}" bindtap="selectRole" data-role="爷爷">
+      <text class="role-emoji">👴</text>
+      <text class="role-name">爷爷</text>
+    </view>
+    <view class="role-item {{selectedRole === '奶奶' ? 'active' : ''}}" bindtap="selectRole" data-role="奶奶">
+      <text class="role-emoji">👵</text>
+      <text class="role-name">奶奶</text>
+    </view>
+    <view class="role-item {{selectedRole === '外公' ? 'active' : ''}}" bindtap="selectRole" data-role="外公">
+      <text class="role-emoji">👴</text>
+      <text class="role-name">外公</text>
+    </view>
+    <view class="role-item {{selectedRole === '外婆' ? 'active' : ''}}" bindtap="selectRole" data-role="外婆">
+      <text class="role-emoji">👵</text>
+      <text class="role-name">外婆</text>
+    </view>
+    <view class="role-item {{selectedRole === '其他' ? 'active' : ''}}" bindtap="selectRole" data-role="其他">
+      <text class="role-emoji">🧑</text>
+      <text class="role-name">其他</text>
+    </view>
+  </view>
+
+  <view wx:if="{{selectedRole === '其他'}}" class="custom-input-wrap">
+    <input class="custom-input" placeholder="请输入你的称呼" value="{{customNickname}}" bindinput="onCustomInput" />
+  </view>
+
+  <view wx:if="{{selectedRole}}" class="custom-input-wrap">
+    <text class="input-label">你的名字（点击可自动填入微信名）</text>
+    <input class="custom-input" type="nickname" placeholder="点击填入微信昵称" value="{{displayName}}" bindinput="onDisplayNameInput" />
+  </view>
+
+  <button class="btn-primary confirm-btn" bindtap="confirm" disabled="{{!selectedRole}}">确认</button>
+</view>

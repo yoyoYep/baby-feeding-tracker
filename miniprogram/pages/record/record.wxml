@@ -1,0 +1,425 @@
+<top-nav title="{{navTitle}}" show-back="{{true}}" />
+
+<view class="container">
+  <!-- 通用日期选择（非计时模式/编辑模式显示） -->
+  <view wx:if="{{mode === 'manual' || editMode || type === 'diaper' || type === 'supplement' || type === 'bath' || type === 'health_temp' || type === 'health_med' || type === 'growth'}}" class="date-picker-bar">
+    <text class="date-picker-label">日期：</text>
+    <picker mode="date" value="{{recordDate}}" bindchange="onRecordDateChange">
+      <view class="date-picker-value">{{recordDate || '今天'}}</view>
+    </picker>
+  </view>
+
+  <!-- 喂奶记录 -->
+  <view wx:if="{{type === 'feeding'}}" class="record-form">
+    <view class="form-title">🍼 喂奶记录</view>
+
+    <!-- 计时模式（非编辑模式才显示） -->
+    <view wx:if="{{mode === 'timer' && !editMode}}" class="timer-section card">
+      <timer id="feedingTimer"
+        start-text="开始喂奶"
+        stop-text="结束喂奶"
+        bind:start="onFeedingStart"
+        bind:stop="onFeedingStop" />
+      <view wx:if="{{ongoingRecordId && !feedingEndTime}}" class="ongoing-start-editor">
+        <view class="form-label">开始时间</view>
+        <picker mode="time" value="{{ongoingStartTimeText}}" bindchange="onOngoingStartTimeChange">
+          <view class="form-input picker-input">{{ongoingStartTimeText || '选择时间'}}</view>
+        </picker>
+      </view>
+    </view>
+
+    <!-- 进行中模式（从首页跳转过来） -->
+    <view wx:if="{{mode === 'ongoing' && !editMode}}" class="timer-section card">
+      <timer id="feedingTimer"
+        start-text="开始喂奶"
+        stop-text="结束喂奶"
+        bind:stop="onFeedingStop" />
+      <view wx:if="{{ongoingRecordId && !feedingEndTime}}" class="ongoing-start-editor">
+        <view class="form-label">开始时间</view>
+        <picker mode="time" value="{{ongoingStartTimeText}}" bindchange="onOngoingStartTimeChange">
+          <view class="form-input picker-input">{{ongoingStartTimeText || '选择时间'}}</view>
+        </picker>
+      </view>
+    </view>
+
+    <!-- 奶量填写（结束后显示或手动/编辑模式） -->
+    <view wx:if="{{showAmountInput || mode === 'manual' || editMode}}" class="card">
+      <view class="form-item">
+        <view class="form-label">奶量 (ml)</view>
+        <view class="amount-quick">
+          <view class="tag {{amount === 60 ? 'active' : ''}}" bindtap="setAmount" data-val="60">60</view>
+          <view class="tag {{amount === 90 ? 'active' : ''}}" bindtap="setAmount" data-val="90">90</view>
+          <view class="tag {{amount === 120 ? 'active' : ''}}" bindtap="setAmount" data-val="120">120</view>
+          <view class="tag {{amount === 150 ? 'active' : ''}}" bindtap="setAmount" data-val="150">150</view>
+        </view>
+        <input class="form-input" type="digit" placeholder="或输入具体奶量"
+          value="{{amount}}" bindinput="onAmountInput" />
+      </view>
+
+      <view class="form-item" wx:if="{{ongoingRecordId && feedingEndTime && !editMode && mode !== 'manual'}}">
+        <view class="form-label">开始时间</view>
+        <picker mode="time" value="{{ongoingStartTimeText}}" bindchange="onOngoingStartTimeChange">
+          <view class="form-input picker-input">{{ongoingStartTimeText || '选择时间'}}</view>
+        </picker>
+      </view>
+
+      <view class="form-item" wx:if="{{mode === 'manual' || editMode}}">
+        <view class="form-label">开始时间</view>
+        <picker mode="time" value="{{manualTime}}" bindchange="onTimeChange">
+          <view class="form-input picker-input">{{manualTime || '选择时间'}}</view>
+        </picker>
+      </view>
+
+      <view class="form-item" wx:if="{{mode === 'manual' || editMode}}">
+        <view class="form-label">结束时间</view>
+        <picker mode="time" value="{{manualEndTime}}" bindchange="onEndTimeChange">
+          <view class="form-input picker-input">{{manualEndTime || '选择时间（可选）'}}</view>
+        </picker>
+      </view>
+
+      <view class="form-item">
+        <view class="form-label">备注</view>
+        <input class="form-input" placeholder="可选" value="{{note}}" bindinput="onNoteInput" />
+      </view>
+
+      <button class="btn-primary save-btn" bindtap="saveFeedingRecord">{{editMode ? '更新记录' : '保存记录'}}</button>
+      <button wx:if="{{editMode}}" class="btn-danger delete-btn" bindtap="deleteRecord">删除记录</button>
+    </view>
+
+    <!-- 模式切换 -->
+    <view wx:if="{{mode === 'timer' && !showAmountInput}}" class="mode-switch">
+      <text bindtap="switchToManual">忘记点开始？手动补录 →</text>
+    </view>
+  </view>
+
+  <!-- 换尿布记录 -->
+  <view wx:if="{{type === 'diaper'}}" class="record-form">
+    <view class="form-title">🧷 换尿布</view>
+    <view class="card">
+      <view class="form-item">
+        <view class="form-label">类型</view>
+        <view class="tag-group">
+          <view class="tag {{diaperType === 'pee' ? 'active' : ''}}" bindtap="setDiaperType" data-val="pee">小便</view>
+          <view class="tag {{diaperType === 'poop' ? 'active' : ''}}" bindtap="setDiaperType" data-val="poop">大便</view>
+          <view class="tag {{diaperType === 'mixed' ? 'active' : ''}}" bindtap="setDiaperType" data-val="mixed">混合</view>
+        </view>
+      </view>
+
+      <view class="form-item" wx:if="{{diaperType === 'poop' || diaperType === 'mixed'}}">
+        <view class="form-label">形状</view>
+        <view class="tag-group">
+          <view class="tag {{poopStatus === 'watery' ? 'active' : ''}}" bindtap="setPoopStatus" data-val="watery">水样</view>
+          <view class="tag {{poopStatus === 'mushy' ? 'active' : ''}}" bindtap="setPoopStatus" data-val="mushy">糊状</view>
+          <view class="tag {{poopStatus === 'soft' ? 'active' : ''}}" bindtap="setPoopStatus" data-val="soft">软便</view>
+          <view class="tag {{poopStatus === 'formed' ? 'active' : ''}}" bindtap="setPoopStatus" data-val="formed">条状</view>
+          <view class="tag {{poopStatus === 'pellet' ? 'active' : ''}}" bindtap="setPoopStatus" data-val="pellet">颗粒状</view>
+        </view>
+      </view>
+
+      <view class="form-item" wx:if="{{diaperType === 'poop' || diaperType === 'mixed'}}">
+        <view class="form-label">颜色</view>
+        <view class="color-group">
+          <view class="color-tag {{poopColor === 'golden' ? 'active' : ''}}" bindtap="setPoopColor" data-val="golden">
+            <view class="color-dot" style="background:#DAA520"></view>
+            <text>金黄</text>
+          </view>
+          <view class="color-tag {{poopColor === 'yellowgreen' ? 'active' : ''}}" bindtap="setPoopColor" data-val="yellowgreen">
+            <view class="color-dot" style="background:#9ACD32"></view>
+            <text>黄绿</text>
+          </view>
+          <view class="color-tag {{poopColor === 'green' ? 'active' : ''}}" bindtap="setPoopColor" data-val="green">
+            <view class="color-dot" style="background:#228B22"></view>
+            <text>绿色</text>
+          </view>
+          <view class="color-tag {{poopColor === 'dark' ? 'active' : ''}}" bindtap="setPoopColor" data-val="dark">
+            <view class="color-dot" style="background:#8B4513"></view>
+            <text>深褐</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="form-item" wx:if="{{diaperType === 'poop' || diaperType === 'mixed'}}">
+        <view class="form-label">量</view>
+        <view class="tag-group">
+          <view class="tag {{poopAmount === '少量' ? 'active' : ''}}" bindtap="setPoopAmount" data-val="少量">少量</view>
+          <view class="tag {{poopAmount === '适量' ? 'active' : ''}}" bindtap="setPoopAmount" data-val="适量">适量</view>
+          <view class="tag {{poopAmount === '较多' ? 'active' : ''}}" bindtap="setPoopAmount" data-val="较多">较多</view>
+        </view>
+      </view>
+
+      <view class="form-item">
+        <view class="form-label">时间</view>
+        <picker mode="time" value="{{diaperTime}}" bindchange="onDiaperTimeChange">
+          <view class="form-input picker-input">{{diaperTime || '现在'}}</view>
+        </picker>
+      </view>
+
+      <view class="form-item">
+        <view class="form-label">备注</view>
+        <input class="form-input" placeholder="可选" value="{{note}}" bindinput="onNoteInput" />
+      </view>
+
+      <button class="btn-primary save-btn" bindtap="saveDiaperRecord">{{editMode ? '更新记录' : '保存记录'}}</button>
+      <button wx:if="{{editMode}}" class="btn-danger delete-btn" bindtap="deleteRecord">删除记录</button>
+    </view>
+  </view>
+
+  <!-- 睡眠记录 -->
+  <view wx:if="{{type === 'sleep'}}" class="record-form">
+    <view class="form-title">💤 睡眠记录</view>
+
+    <view wx:if="{{!editMode}}" class="timer-section card">
+      <timer id="sleepTimer"
+        start-text="宝宝睡着了"
+        stop-text="宝宝醒了"
+        bind:start="onSleepStart"
+        bind:stop="onSleepStop" />
+      <view wx:if="{{ongoingSleepId && !sleepEndTime}}" class="ongoing-start-editor">
+        <view class="form-label">开始时间</view>
+        <picker mode="time" value="{{ongoingStartTimeText}}" bindchange="onOngoingStartTimeChange">
+          <view class="form-input picker-input">{{ongoingStartTimeText || '选择时间'}}</view>
+        </picker>
+      </view>
+    </view>
+
+    <!-- 编辑模式：手动时间选择 -->
+    <view wx:if="{{editMode}}" class="card">
+      <view class="form-item">
+        <view class="form-label">入睡时间</view>
+        <picker mode="time" value="{{manualTime}}" bindchange="onTimeChange">
+          <view class="form-input picker-input">{{manualTime || '选择时间'}}</view>
+        </picker>
+      </view>
+      <view class="form-item">
+        <view class="form-label">醒来时间</view>
+        <picker mode="time" value="{{manualEndTime}}" bindchange="onEndTimeChange">
+          <view class="form-input picker-input">{{manualEndTime || '选择时间'}}</view>
+        </picker>
+      </view>
+    </view>
+
+    <view wx:if="{{showSleepForm || editMode}}" class="card">
+      <view class="form-item" wx:if="{{ongoingSleepId && sleepEndTime && !editMode}}">
+        <view class="form-label">开始时间</view>
+        <picker mode="time" value="{{ongoingStartTimeText}}" bindchange="onOngoingStartTimeChange">
+          <view class="form-input picker-input">{{ongoingStartTimeText || '选择时间'}}</view>
+        </picker>
+      </view>
+
+      <view class="form-item">
+        <view class="form-label">睡眠类型</view>
+        <view class="tag-group">
+          <view class="tag {{sleepType === 'nap' ? 'active' : ''}}" bindtap="setSleepType" data-val="nap">小睡</view>
+          <view class="tag {{sleepType === 'night' ? 'active' : ''}}" bindtap="setSleepType" data-val="night">夜觉</view>
+        </view>
+      </view>
+
+      <view class="form-item">
+        <view class="form-label">入睡方式</view>
+        <view class="tag-group">
+          <view class="tag {{sleepMethod === 'nursing' ? 'active' : ''}}" bindtap="setSleepMethod" data-val="nursing">奶睡</view>
+          <view class="tag {{sleepMethod === 'holding' ? 'active' : ''}}" bindtap="setSleepMethod" data-val="holding">抱睡</view>
+          <view class="tag {{sleepMethod === 'self' ? 'active' : ''}}" bindtap="setSleepMethod" data-val="self">自主入睡</view>
+          <view class="tag {{sleepMethod === 'patting' ? 'active' : ''}}" bindtap="setSleepMethod" data-val="patting">拍睡</view>
+        </view>
+      </view>
+
+      <view class="form-item">
+        <view class="form-label">睡眠质量</view>
+        <view class="tag-group">
+          <view class="tag {{sleepQuality === 'good' ? 'active' : ''}}" bindtap="setSleepQuality" data-val="good">安稳</view>
+          <view class="tag {{sleepQuality === 'normal' ? 'active' : ''}}" bindtap="setSleepQuality" data-val="normal">一般</view>
+          <view class="tag {{sleepQuality === 'poor' ? 'active' : ''}}" bindtap="setSleepQuality" data-val="poor">易醒</view>
+        </view>
+      </view>
+
+      <view class="form-item" wx:if="{{sleepType === 'night'}}">
+        <view class="form-label">夜醒次数</view>
+        <view class="tag-group">
+          <view class="tag {{wakeCount === 0 ? 'active' : ''}}" bindtap="setWakeCount" data-val="0">0次</view>
+          <view class="tag {{wakeCount === 1 ? 'active' : ''}}" bindtap="setWakeCount" data-val="1">1次</view>
+          <view class="tag {{wakeCount === 2 ? 'active' : ''}}" bindtap="setWakeCount" data-val="2">2次</view>
+          <view class="tag {{wakeCount === 3 ? 'active' : ''}}" bindtap="setWakeCount" data-val="3">3次+</view>
+        </view>
+      </view>
+
+      <button class="btn-primary save-btn" bindtap="saveSleepRecord">{{editMode ? '更新记录' : '保存记录'}}</button>
+      <button wx:if="{{editMode}}" class="btn-danger delete-btn" bindtap="deleteRecord">删除记录</button>
+    </view>
+  </view>
+
+  <!-- 辅食记录 -->
+  <view wx:if="{{type === 'supplement'}}" class="record-form">
+    <view class="form-title">🥣 辅食记录</view>
+    <view class="card">
+      <view class="form-item">
+        <view class="form-label">食物</view>
+        <view class="tag-group">
+          <view class="tag {{food === item ? 'active' : ''}}" wx:for="{{foodList}}" wx:key="*this"
+            bindtap="setFood" data-val="{{item}}">{{item}}</view>
+        </view>
+        <input class="form-input" placeholder="或输入其他食物" value="{{customFood}}" bindinput="onCustomFoodInput" />
+      </view>
+
+      <view class="form-item">
+        <view class="form-label">食用量</view>
+        <view class="tag-group">
+          <view class="tag {{foodAmount === '少量' ? 'active' : ''}}" bindtap="setFoodAmount" data-val="少量">少量</view>
+          <view class="tag {{foodAmount === '适量' ? 'active' : ''}}" bindtap="setFoodAmount" data-val="适量">适量</view>
+          <view class="tag {{foodAmount === '较多' ? 'active' : ''}}" bindtap="setFoodAmount" data-val="较多">较多</view>
+        </view>
+      </view>
+
+      <view class="form-item">
+        <view class="form-label">宝宝反应</view>
+        <view class="tag-group">
+          <view class="tag {{reaction === 'like' ? 'active' : ''}}" bindtap="setReaction" data-val="like">喜欢</view>
+          <view class="tag {{reaction === 'normal' ? 'active' : ''}}" bindtap="setReaction" data-val="normal">一般</view>
+          <view class="tag {{reaction === 'dislike' ? 'active' : ''}}" bindtap="setReaction" data-val="dislike">不喜欢</view>
+          <view class="tag {{reaction === 'allergy' ? 'active' : ''}}" bindtap="setReaction" data-val="allergy">过敏</view>
+        </view>
+      </view>
+
+      <view class="form-item">
+        <view class="form-label">备注</view>
+        <input class="form-input" placeholder="可选" value="{{note}}" bindinput="onNoteInput" />
+      </view>
+
+      <button class="btn-primary save-btn" bindtap="saveSupplementRecord">{{editMode ? '更新记录' : '保存记录'}}</button>
+      <button wx:if="{{editMode}}" class="btn-danger delete-btn" bindtap="deleteRecord">删除记录</button>
+    </view>
+  </view>
+
+  <!-- 洗澡记录 -->
+  <view wx:if="{{type === 'bath'}}" class="record-form">
+    <view class="form-title">🛁 洗澡记录</view>
+    <view class="card">
+      <view class="form-item">
+        <view class="form-label">时间</view>
+        <picker mode="time" value="{{bathTime}}" bindchange="onBathTimeChange">
+          <view class="form-input picker-input">{{bathTime || '现在'}}</view>
+        </picker>
+      </view>
+
+      <view class="form-item">
+        <view class="form-label">水温 (°C)</view>
+        <input class="form-input" type="digit" placeholder="可选，如 38" value="{{bathWaterTemp}}" bindinput="onBathWaterTempInput" />
+      </view>
+
+      <view class="form-item">
+        <view class="form-label">时长 (分钟)</view>
+        <input class="form-input" type="number" placeholder="可选，如 10" value="{{bathDuration}}" bindinput="onBathDurationInput" />
+      </view>
+
+      <view class="form-item">
+        <view class="form-label">备注</view>
+        <input class="form-input" placeholder="可选" value="{{note}}" bindinput="onNoteInput" />
+      </view>
+
+      <button class="btn-primary save-btn" bindtap="saveBathRecord">{{editMode ? '更新记录' : '保存记录'}}</button>
+      <button wx:if="{{editMode}}" class="btn-danger delete-btn" bindtap="deleteRecord">删除记录</button>
+    </view>
+  </view>
+
+  <!-- 体温记录 -->
+  <view wx:if="{{type === 'health_temp'}}" class="record-form">
+    <view class="form-title">🌡️ 体温记录</view>
+    <view class="card">
+      <view class="form-item">
+        <view class="form-label">体温 (°C)</view>
+        <input class="form-input" type="digit" placeholder="如 37.2" value="{{tempValue}}" bindinput="onTempInput" />
+      </view>
+
+      <view class="form-item">
+        <view class="form-label">测量方式</view>
+        <view class="tag-group">
+          <view class="tag {{tempMethod === 'forehead' ? 'active' : ''}}" bindtap="setTempMethod" data-val="forehead">额温</view>
+          <view class="tag {{tempMethod === 'ear' ? 'active' : ''}}" bindtap="setTempMethod" data-val="ear">耳温</view>
+          <view class="tag {{tempMethod === 'armpit' ? 'active' : ''}}" bindtap="setTempMethod" data-val="armpit">腋温</view>
+        </view>
+      </view>
+
+      <view class="form-item">
+        <view class="form-label">备注</view>
+        <input class="form-input" placeholder="可选" value="{{note}}" bindinput="onNoteInput" />
+      </view>
+
+      <button class="btn-primary save-btn" bindtap="saveTempRecord">{{editMode ? '更新记录' : '保存记录'}}</button>
+      <button wx:if="{{editMode}}" class="btn-danger delete-btn" bindtap="deleteRecord">删除记录</button>
+    </view>
+  </view>
+
+  <!-- 用药记录 -->
+  <view wx:if="{{type === 'health_med'}}" class="record-form">
+    <view class="form-title">💊 用药记录</view>
+    <view class="card">
+      <view class="form-item">
+        <view class="form-label">药品名称</view>
+        <input class="form-input" placeholder="如 布洛芬" value="{{medName}}" bindinput="onMedNameInput" />
+      </view>
+
+      <view class="form-item">
+        <view class="form-label">剂量</view>
+        <input class="form-input" type="digit" placeholder="如 2.5" value="{{medDosage}}" bindinput="onMedDosageInput" />
+      </view>
+
+      <view class="form-item">
+        <view class="form-label">单位</view>
+        <view class="tag-group">
+          <view class="tag {{medUnit === 'ml' ? 'active' : ''}}" bindtap="setMedUnit" data-val="ml">ml</view>
+          <view class="tag {{medUnit === '包' ? 'active' : ''}}" bindtap="setMedUnit" data-val="包">包</view>
+          <view class="tag {{medUnit === '片' ? 'active' : ''}}" bindtap="setMedUnit" data-val="片">片</view>
+          <view class="tag {{medUnit === '滴' ? 'active' : ''}}" bindtap="setMedUnit" data-val="滴">滴</view>
+          <view class="tag {{medUnit === '粒' ? 'active' : ''}}" bindtap="setMedUnit" data-val="粒">粒</view>
+        </view>
+      </view>
+
+      <view class="form-item">
+        <view class="form-label">用药方式</view>
+        <view class="tag-group">
+          <view class="tag {{medMethod === 'oral' ? 'active' : ''}}" bindtap="setMedMethod" data-val="oral">口服</view>
+          <view class="tag {{medMethod === 'external' ? 'active' : ''}}" bindtap="setMedMethod" data-val="external">外用</view>
+          <view class="tag {{medMethod === 'nebulize' ? 'active' : ''}}" bindtap="setMedMethod" data-val="nebulize">雾化</view>
+          <view class="tag {{medMethod === 'rectal' ? 'active' : ''}}" bindtap="setMedMethod" data-val="rectal">塞肛</view>
+        </view>
+      </view>
+
+      <view class="form-item">
+        <view class="form-label">备注</view>
+        <input class="form-input" placeholder="可选" value="{{note}}" bindinput="onNoteInput" />
+      </view>
+
+      <button class="btn-primary save-btn" bindtap="saveMedRecord">{{editMode ? '更新记录' : '保存记录'}}</button>
+      <button wx:if="{{editMode}}" class="btn-danger delete-btn" bindtap="deleteRecord">删除记录</button>
+    </view>
+  </view>
+
+  <!-- 身高体重记录 -->
+  <view wx:if="{{type === 'growth'}}" class="record-form">
+    <view class="form-title">📏 身高体重</view>
+    <view class="card">
+      <view class="form-item">
+        <view class="form-label">体重 (kg)</view>
+        <input class="form-input" type="digit" placeholder="如 5.3" value="{{growthWeight}}" bindinput="onGrowthWeightInput" />
+      </view>
+
+      <view class="form-item">
+        <view class="form-label">身高 (cm)</view>
+        <input class="form-input" type="digit" placeholder="如 65.0" value="{{growthHeight}}" bindinput="onGrowthHeightInput" />
+      </view>
+
+      <view class="form-item">
+        <view class="form-label">头围 (cm)</view>
+        <input class="form-input" type="digit" placeholder="如 42.0" value="{{growthHc}}" bindinput="onGrowthHcInput" />
+      </view>
+
+      <view class="form-item">
+        <view class="form-label">备注</view>
+        <input class="form-input" placeholder="可选" value="{{note}}" bindinput="onNoteInput" />
+      </view>
+
+      <button class="btn-primary save-btn" bindtap="saveGrowthRecord">{{editMode ? '更新记录' : '保存记录'}}</button>
+      <button wx:if="{{editMode}}" class="btn-danger delete-btn" bindtap="deleteRecord">删除记录</button>
+    </view>
+  </view>
+</view>

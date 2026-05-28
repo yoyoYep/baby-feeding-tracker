@@ -1,0 +1,11 @@
+<view class="top-nav" style="padding-top: {{statusBarHeight}}px;">
+  <view class="nav-row" style="height: {{navBarHeight}}px;">
+    <view class="nav-side left">
+      <view wx:if="{{showBack}}" class="back-btn" bindtap="goBack">‹</view>
+    </view>
+    <view class="nav-title">{{title}}</view>
+    <view class="nav-side right">
+      <view wx:if="{{rightText}}" class="right-btn" bindtap="tapRight">{{rightText}}</view>
+    </view>
+  </view>
+</view>
