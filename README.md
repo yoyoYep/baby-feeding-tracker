@@ -1,6 +1,9 @@
 # 宝宝喂养记录小程序 - 使用与部署指南
 
 > 一个微信小程序，用于记录宝宝的喂奶、睡眠、换尿布、洗澡、辅食、健康、生长等日常事件。支持语音一句话快速记录，家庭成员共享数据。
+>
+>  <img width="414" height="780" alt="b1721a4a-789d-447b-a8d9-a6a8f67067a7" src="https://github.com/user-attachments/assets/70b41f3b-4e60-4d4b-9e7f-1ee298fb7fcd" />
+
 
 ---
 
