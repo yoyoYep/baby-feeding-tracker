@@ -1,0 +1,67 @@
+.more-page {
+  padding-bottom: 150rpx;
+}
+
+.tool-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.tool-item {
+  display: flex;
+  align-items: center;
+  min-height: 132rpx;
+  padding: 28rpx 30rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.04);
+}
+
+.tool-icon {
+  width: 72rpx;
+  height: 72rpx;
+  margin-right: 22rpx;
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 38rpx;
+}
+
+.tool-item.record .tool-icon {
+  background: #eef6ff;
+}
+
+.tool-item.stats .tool-icon {
+  background: #fff3f5;
+}
+
+.tool-item.growth .tool-icon {
+  background: #f0faf3;
+}
+
+.tool-copy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.tool-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #222;
+}
+
+.tool-subtitle {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #8a8f99;
+}
+
+.tool-arrow {
+  margin-left: 18rpx;
+  font-size: 40rpx;
+  color: #c7cbd1;
+}

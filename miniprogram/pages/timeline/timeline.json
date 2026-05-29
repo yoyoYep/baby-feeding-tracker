@@ -1,0 +1,9 @@
+{
+  "usingComponents": {
+    "top-nav": "../../components/top-nav/top-nav"
+  },
+  "navigationStyle": "custom",
+  "navigationBarTitleText": "记录时间轴",
+  "enablePullDownRefresh": true,
+  "backgroundTextStyle": "dark"
+}

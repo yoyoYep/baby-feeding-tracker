@@ -1,0 +1,184 @@
+/* 日期栏 */
+.date-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20rpx 0;
+  gap: 30rpx;
+}
+
+.date-btn {
+  font-size: 36rpx;
+  color: #999;
+  padding: 10rpx 20rpx;
+}
+
+.date-text {
+  font-size: 30rpx;
+  font-weight: 500;
+}
+
+/* Tab 切换 */
+.tab-bar {
+  display: flex;
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 6rpx;
+  margin-bottom: 24rpx;
+}
+
+.tab-item {
+  flex: 1;
+  text-align: center;
+  padding: 16rpx 0;
+  font-size: 26rpx;
+  color: #999;
+  border-radius: 12rpx;
+  transition: all 0.2s;
+}
+
+.tab-item.active {
+  background: linear-gradient(135deg, #FF9AA2, #FFB7B2);
+  color: #fff;
+  font-weight: 500;
+}
+
+/* 卡片头部 */
+.card-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 24rpx;
+}
+
+.card-icon {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 12rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  margin-right: 16rpx;
+}
+
+.feeding-icon { background: #E3F2FD; }
+.sleep-icon { background: #F3E5F5; }
+.diaper-icon { background: #FFF3E0; }
+
+.card-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+/* 统计数字 */
+.stats-row {
+  display: flex;
+  justify-content: space-around;
+}
+
+.stats-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.stats-num {
+  font-size: 44rpx;
+  font-weight: 700;
+}
+
+.feeding-color { color: #64B5F6; }
+.sleep-color { color: #CE93D8; }
+.diaper-color { color: #FFB74D; }
+
+.stats-label {
+  font-size: 22rpx;
+  color: #999;
+  margin-top: 8rpx;
+}
+
+/* 柱状图 */
+.chart-bar-group {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  height: 280rpx;
+  padding: 0 10rpx;
+}
+
+.chart-bar-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+
+.chart-bar-value {
+  font-size: 20rpx;
+  color: #666;
+  margin-bottom: 8rpx;
+  height: 30rpx;
+}
+
+.chart-bar-track {
+  width: 36rpx;
+  height: 180rpx;
+  background: #f5f5f5;
+  border-radius: 18rpx;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+
+.chart-bar {
+  width: 100%;
+  border-radius: 18rpx;
+  min-height: 4rpx;
+  transition: height 0.3s ease;
+}
+
+.feeding-bar { background: linear-gradient(to top, #64B5F6, #90CAF9); }
+.sleep-bar { background: linear-gradient(to top, #CE93D8, #E1BEE7); }
+.diaper-bar { background: linear-gradient(to top, #FFB74D, #FFCC80); }
+
+.chart-bar-label {
+  font-size: 20rpx;
+  color: #999;
+  margin-top: 8rpx;
+}
+
+/* Loading */
+.loading-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 80rpx 0;
+}
+
+.loading-dot {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #FF9AA2, #FFB7B2);
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(0.8); opacity: 0.5; }
+  50% { transform: scale(1); opacity: 1; }
+}
+
+.loading-text {
+  font-size: 24rpx;
+  color: #999;
+  margin-top: 16rpx;
+}
+
+/* 空状态 */
+.empty-tip {
+  text-align: center;
+  padding: 60rpx 0;
+  color: #ccc;
+  font-size: 26rpx;
+}

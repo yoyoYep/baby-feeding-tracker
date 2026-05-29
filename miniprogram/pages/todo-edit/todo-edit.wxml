@@ -1,0 +1,156 @@
+<top-nav title="{{navTitle}}" show-back="{{true}}" />
+
+<view class="container todo-edit-page">
+  <view class="card">
+    <view class="form-item">
+      <view class="form-label">事项类型</view>
+      <picker mode="selector" range="{{typeOptions}}" range-key="label" value="{{typeIndex}}" bindchange="onTypeChange">
+        <view class="form-input picker-input">{{typeLabel}}</view>
+      </picker>
+    </view>
+
+    <view class="form-item">
+      <view class="form-label">时间</view>
+      <picker mode="time" value="{{time}}" bindchange="onTimeChange">
+        <view class="form-input picker-input">{{time}}</view>
+      </picker>
+    </view>
+
+    <view class="form-item">
+      <view class="form-label">重复规则</view>
+      <picker mode="selector" range="{{scheduleOptions}}" range-key="label" value="{{scheduleIndex}}" bindchange="onScheduleChange">
+        <view class="form-input picker-input">{{scheduleLabel}}</view>
+      </picker>
+    </view>
+
+    <view class="form-item" wx:if="{{scheduleType === 'daily'}}">
+      <view class="form-label">开始日期</view>
+      <picker mode="date" value="{{startDate}}" bindchange="onStartDateChange">
+        <view class="form-input picker-input">{{startDate}}</view>
+      </picker>
+    </view>
+
+    <view class="form-item" wx:if="{{scheduleType === 'once'}}">
+      <view class="form-label">指定日期</view>
+      <picker mode="date" value="{{date}}" bindchange="onDateChange">
+        <view class="form-input picker-input">{{date}}</view>
+      </picker>
+    </view>
+
+    <view wx:if="{{scheduleType === 'range'}}">
+      <view class="form-item">
+        <view class="form-label">开始日期</view>
+        <picker mode="date" value="{{startDate}}" bindchange="onStartDateChange">
+          <view class="form-input picker-input">{{startDate}}</view>
+        </picker>
+      </view>
+      <view class="form-item">
+        <view class="form-label">结束日期</view>
+        <picker mode="date" value="{{endDate}}" bindchange="onEndDateChange">
+          <view class="form-input picker-input">{{endDate}}</view>
+        </picker>
+      </view>
+    </view>
+
+    <view wx:if="{{scheduleType === 'interval'}}">
+      <view class="form-item">
+        <view class="form-label">开始日期</view>
+        <picker mode="date" value="{{startDate}}" bindchange="onStartDateChange">
+          <view class="form-input picker-input">{{startDate}}</view>
+        </picker>
+      </view>
+      <view class="form-item">
+        <view class="form-label">间隔天数</view>
+        <input class="form-input" type="number" placeholder="如 2" value="{{intervalDays}}" bindinput="onIntervalDaysInput" />
+      </view>
+      <view class="form-item compact-row">
+        <view>
+          <view class="form-label">设置结束日期</view>
+          <view class="inline-note">关闭时会一直按间隔重复</view>
+        </view>
+        <switch checked="{{intervalEndEnabled}}" bindchange="onIntervalEndToggle" color="#FF9AA2" />
+      </view>
+      <view class="form-item" wx:if="{{intervalEndEnabled}}">
+        <view class="form-label">结束日期</view>
+        <picker mode="date" value="{{endDate}}" bindchange="onEndDateChange">
+          <view class="form-input picker-input">{{endDate}}</view>
+        </picker>
+      </view>
+    </view>
+  </view>
+
+  <view class="card" wx:if="{{type === 'health_temp'}}">
+    <view class="section-title">量体温</view>
+    <view class="form-item">
+      <view class="form-label">测量方式</view>
+      <view class="tag-group">
+        <view class="tag {{tempMethod === 'forehead' ? 'active' : ''}}" bindtap="setTempMethod" data-val="forehead">额温</view>
+        <view class="tag {{tempMethod === 'ear' ? 'active' : ''}}" bindtap="setTempMethod" data-val="ear">耳温</view>
+        <view class="tag {{tempMethod === 'armpit' ? 'active' : ''}}" bindtap="setTempMethod" data-val="armpit">腋温</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="card" wx:if="{{type === 'growth'}}">
+    <view class="section-title">身高体重</view>
+    <view class="inline-note">完成时会打开身高体重记录页。</view>
+  </view>
+
+  <view class="card" wx:if="{{type === 'health_med'}}">
+    <view class="section-title">吃药</view>
+    <view class="form-item">
+      <view class="form-label">药品名称</view>
+      <input class="form-input" placeholder="如 布洛芬" value="{{medName}}" bindinput="onMedNameInput" />
+    </view>
+    <view class="form-item">
+      <view class="form-label">剂量</view>
+      <view class="dosage-row">
+        <input class="form-input dosage-input" type="digit" placeholder="用量" value="{{medDosage}}" bindinput="onMedDosageInput" />
+        <view class="unit-group">
+          <view class="tag {{medUnit === 'ml' ? 'active' : ''}}" bindtap="setMedUnit" data-val="ml">ml</view>
+          <view class="tag {{medUnit === '包' ? 'active' : ''}}" bindtap="setMedUnit" data-val="包">包</view>
+          <view class="tag {{medUnit === '片' ? 'active' : ''}}" bindtap="setMedUnit" data-val="片">片</view>
+          <view class="tag {{medUnit === '滴' ? 'active' : ''}}" bindtap="setMedUnit" data-val="滴">滴</view>
+          <view class="tag {{medUnit === '粒' ? 'active' : ''}}" bindtap="setMedUnit" data-val="粒">粒</view>
+          <view class="tag {{medUnit === '瓶' ? 'active' : ''}}" bindtap="setMedUnit" data-val="瓶">瓶</view>
+          <view class="tag {{medUnit === 'g' ? 'active' : ''}}" bindtap="setMedUnit" data-val="g">g</view>
+        </view>
+      </view>
+    </view>
+    <view class="form-item">
+      <view class="form-label">用药方式</view>
+      <view class="tag-group">
+        <view class="tag {{medMethod === 'oral' ? 'active' : ''}}" bindtap="setMedMethod" data-val="oral">口服</view>
+        <view class="tag {{medMethod === 'external' ? 'active' : ''}}" bindtap="setMedMethod" data-val="external">外用</view>
+        <view class="tag {{medMethod === 'nebulize' ? 'active' : ''}}" bindtap="setMedMethod" data-val="nebulize">雾化</view>
+        <view class="tag {{medMethod === 'rectal' ? 'active' : ''}}" bindtap="setMedMethod" data-val="rectal">塞肛</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="card" wx:if="{{type === 'health_vaccine'}}">
+    <view class="section-title">疫苗</view>
+    <view class="form-item">
+      <view class="form-label">疫苗名称</view>
+      <input class="form-input" placeholder="如 五联疫苗" value="{{vaccineName}}" bindinput="onVaccineNameInput" />
+    </view>
+  </view>
+
+  <view class="card" wx:if="{{type === 'health_custom'}}">
+    <view class="section-title">自定义健康事项</view>
+    <view class="form-item">
+      <view class="form-label">事项名称</view>
+      <input class="form-input" placeholder="如 复诊、换药" value="{{customTitle}}" bindinput="onCustomTitleInput" />
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="form-item">
+      <view class="form-label">备注</view>
+      <input class="form-input" placeholder="可选" value="{{note}}" bindinput="onNoteInput" />
+    </view>
+  </view>
+
+  <button class="btn-primary save-btn" bindtap="saveTodo">保存待办</button>
+  <button wx:if="{{editMode}}" class="delete-btn" bindtap="deleteTodo">删除待办</button>
+</view>

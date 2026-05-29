@@ -1,0 +1,528 @@
+.timeline-page {
+  padding-bottom: 180rpx;
+}
+
+.date-bar {
+  position: relative;
+  min-height: 116rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24rpx 120rpx;
+}
+
+.date-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 60rpx;
+  height: 60rpx;
+  border-radius: 50%;
+  background: #f7f7f7;
+  color: #555;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 44rpx;
+  line-height: 1;
+}
+
+.date-nav.prev {
+  left: 18rpx;
+}
+
+.date-nav.next {
+  right: 18rpx;
+}
+
+.date-nav.disabled {
+  color: #d6d6d6;
+}
+
+.date-center {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.date-main {
+  min-width: 280rpx;
+  text-align: center;
+}
+
+.date-label {
+  display: block;
+  font-size: 34rpx;
+  color: #222;
+  font-weight: 600;
+}
+
+.date-str {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 24rpx;
+  color: #999;
+}
+
+.today-btn {
+  position: absolute;
+  right: 88rpx;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 12rpx 22rpx;
+  border-radius: 28rpx;
+  color: #FF9AA2;
+  background: #FFF0F1;
+  font-size: 26rpx;
+}
+
+.summary-strip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 26rpx;
+  background: #fff;
+  border-radius: 14rpx;
+  padding: 12rpx 18rpx;
+  margin-bottom: 18rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.04);
+}
+
+.summary-chip {
+  display: flex;
+  align-items: baseline;
+  gap: 6rpx;
+  min-width: 0;
+}
+
+.summary-value {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #333;
+}
+
+.summary-value.duration {
+  color: #4A7BD9;
+}
+
+.summary-value.point {
+  color: #2E8B57;
+}
+
+.summary-label {
+  font-size: 22rpx;
+  color: #888;
+}
+
+.empty-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 70rpx 30rpx;
+}
+
+.empty-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.empty-desc {
+  margin-top: 12rpx;
+  font-size: 26rpx;
+  color: #888;
+}
+
+.timeline-days {
+  padding-bottom: 20rpx;
+}
+
+.timeline-stream-card {
+  padding: 0 14rpx 18rpx;
+  overflow: hidden;
+}
+
+.day-section {
+  position: relative;
+  margin: 0;
+}
+
+.day-section + .day-section {
+  border-top: 1rpx solid #f1f1f1;
+}
+
+.day-heading {
+  position: absolute;
+  top: 6rpx;
+  left: 0;
+  z-index: 7;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  width: 86rpx;
+  min-height: 0;
+  padding: 3rpx 0;
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.day-label {
+  font-size: 22rpx;
+  line-height: 1.15;
+  font-weight: 600;
+  color: #555;
+}
+
+.day-date {
+  font-size: 17rpx;
+  line-height: 1.15;
+  color: #aaa;
+}
+
+.day-count {
+  display: none;
+}
+
+.day-empty {
+  position: relative;
+  min-height: 92rpx;
+  padding: 34rpx 0 18rpx 96rpx;
+  text-align: center;
+  color: #999;
+  font-size: 24rpx;
+}
+
+.axis-card {
+  padding: 24rpx 14rpx 30rpx;
+  overflow: hidden;
+}
+
+.axis-shell {
+  position: relative;
+  margin: 0 0 4rpx;
+}
+
+.hour-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1rpx;
+  display: flex;
+  align-items: center;
+}
+
+.hour-label {
+  width: 86rpx;
+  flex-shrink: 0;
+  color: #9a9a9a;
+  font-size: 22rpx;
+  line-height: 1;
+}
+
+.hour-rule {
+  flex: 1;
+  height: 1rpx;
+  background: #ececec;
+}
+
+.axis-content {
+  position: absolute;
+  top: 0;
+  left: 96rpx;
+  right: 0;
+  bottom: 0;
+}
+
+.duration-track,
+.point-track {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+
+.duration-track {
+  left: 0;
+  width: 70%;
+}
+
+.point-track {
+  left: 70%;
+  right: 0;
+}
+
+.point-track::before {
+  content: '';
+  position: absolute;
+  left: 22rpx;
+  top: 0;
+  bottom: 0;
+  width: 3rpx;
+  border-radius: 3rpx;
+  background: #E4DAF5;
+}
+
+.now-marker {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+
+.now-rule {
+  flex: 1;
+  height: 1rpx;
+  background: rgba(244, 67, 54, 0.45);
+}
+
+.now-label {
+  margin-left: 8rpx;
+  padding: 3rpx 8rpx;
+  border-radius: 14rpx;
+  background: rgba(244, 67, 54, 0.72);
+  color: #fff;
+  font-size: 18rpx;
+  line-height: 1;
+}
+
+.time-block {
+  position: absolute;
+  z-index: 2;
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 8rpx 10rpx;
+  border-radius: 10rpx;
+  overflow: hidden;
+  border-left: 6rpx solid #8aa8d8;
+  background: #F4F8FF;
+  box-shadow: 0 3rpx 10rpx rgba(30, 64, 120, 0.06);
+}
+
+.time-block.feeding {
+  border-left-color: #4A90E2;
+  background: #EAF4FF;
+}
+
+.time-block.sleep {
+  border-left-color: #8E6BC8;
+  background: #F4EEFF;
+}
+
+.time-block.bath {
+  border-left-color: #2A9BB8;
+  background: #EAF9FC;
+}
+
+.time-block.health_temp,
+.time-block.health_med,
+.time-block.health_vaccine,
+.time-block.health_custom {
+  border-left-color: #E85D75;
+  background: #FFF0F3;
+}
+
+.time-block.growth,
+.time-block.supplement {
+  border-left-color: #56A66B;
+  background: #EFFAF1;
+}
+
+.block-head {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  min-width: 0;
+}
+
+.block-icon {
+  flex-shrink: 0;
+  font-size: 22rpx;
+}
+
+.block-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 21rpx;
+  font-weight: 500;
+  color: #444;
+}
+
+.block-foot {
+  display: flex;
+  gap: 8rpx;
+  margin-top: 4rpx;
+  font-size: 18rpx;
+  color: #777;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.point-item {
+  position: absolute;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 54rpx;
+  height: 54rpx;
+}
+
+.point-dot {
+  width: 48rpx;
+  height: 48rpx;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #fff;
+  border: 4rpx solid #999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 21rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
+  z-index: 2;
+}
+
+.point-item.feeding .point-dot {
+  border-color: #4A90E2;
+}
+
+.point-item.sleep .point-dot {
+  border-color: #8E6BC8;
+}
+
+.point-item.diaper .point-dot {
+  border-color: #F0A33A;
+}
+
+.point-item.bath .point-dot {
+  border-color: #2A9BB8;
+}
+
+.point-item.health_temp .point-dot,
+.point-item.health_med .point-dot,
+.point-item.health_vaccine .point-dot,
+.point-item.health_custom .point-dot {
+  border-color: #E85D75;
+}
+
+.point-item.growth .point-dot,
+.point-item.supplement .point-dot {
+  border-color: #56A66B;
+}
+
+.load-more-tip {
+  padding: 20rpx 0 10rpx;
+  text-align: center;
+  color: #aaa;
+  font-size: 24rpx;
+}
+
+.detail-mask {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 1300;
+  background: rgba(0, 0, 0, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48rpx;
+}
+
+.detail-dialog {
+  width: 100%;
+  max-height: 72vh;
+  box-sizing: border-box;
+  padding: 28rpx;
+  border-radius: 18rpx;
+  background: #fff;
+  box-shadow: 0 16rpx 48rpx rgba(0, 0, 0, 0.16);
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.detail-title-row {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.detail-icon {
+  flex-shrink: 0;
+  font-size: 34rpx;
+}
+
+.detail-title {
+  min-width: 0;
+  color: #222;
+  font-size: 34rpx;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detail-close {
+  flex-shrink: 0;
+  width: 50rpx;
+  height: 50rpx;
+  line-height: 48rpx;
+  text-align: center;
+  border-radius: 50%;
+  background: #f5f5f5;
+  color: #777;
+  font-size: 36rpx;
+}
+
+.detail-time {
+  display: block;
+  margin-top: 8rpx;
+  color: #888;
+  font-size: 24rpx;
+}
+
+.detail-lines {
+  margin-top: 22rpx;
+}
+
+.detail-line {
+  display: flex;
+  align-items: flex-start;
+  padding: 14rpx 0;
+  border-top: 1rpx solid #f2f2f2;
+}
+
+.detail-line-label {
+  width: 136rpx;
+  flex-shrink: 0;
+  color: #888;
+  font-size: 26rpx;
+}
+
+.detail-line-value {
+  flex: 1;
+  min-width: 0;
+  color: #222;
+  font-size: 28rpx;
+  line-height: 1.4;
+  word-break: break-all;
+}
+
+.detail-empty {
+  margin-top: 28rpx;
+  color: #999;
+  font-size: 26rpx;
+  text-align: center;
+}

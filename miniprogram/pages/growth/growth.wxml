@@ -1,0 +1,86 @@
+<view class="growth-page">
+  <view class="top-panel" style="padding-top: {{statusBarHeight}}px;">
+    <view class="title-row" style="height: {{navBarHeight}}px;">
+      <view class="back-btn" bindtap="goBack">‹</view>
+      <view class="page-title">身高体重记录</view>
+      <view></view>
+    </view>
+    <view class="growth-action-row">
+      <view class="add-pill" bindtap="addRecord">+ 添加记录</view>
+    </view>
+    <view class="growth-tabs">
+      <view class="growth-tab {{activeTab === 'list' ? 'active' : ''}}" bindtap="switchTab" data-tab="list">记录列表</view>
+      <view class="growth-tab {{activeTab === 'height' ? 'active' : ''}}" bindtap="switchTab" data-tab="height">身高曲线</view>
+      <view class="growth-tab {{activeTab === 'weight' ? 'active' : ''}}" bindtap="switchTab" data-tab="weight">体重曲线</view>
+      <view class="growth-tab {{activeTab === 'hc' ? 'active' : ''}}" bindtap="switchTab" data-tab="hc">头围曲线</view>
+    </view>
+  </view>
+
+  <view class="content">
+    <view wx:if="{{activeTab === 'list'}}" class="record-list">
+      <view wx:if="{{records.length === 0}}" class="empty-card">
+        <view class="empty-title">还没有测量记录</view>
+        <view class="empty-desc">添加一次身高、体重或头围，曲线就会开始长出来。</view>
+        <view class="empty-add" bindtap="addRecord">添加记录</view>
+      </view>
+
+      <view wx:for="{{records}}" wx:key="_id" wx:for-index="index" class="record-card">
+        <view class="record-head">
+          <view class="record-date">{{item.dateTitle}}<text wx:if="{{item.ageText}}">（{{item.ageText}}）</text></view>
+          <view class="more-btn" catchtap="showRecordActions" data-id="{{item._id}}">...</view>
+        </view>
+
+        <view class="metric-grid">
+          <view class="metric-item">
+            <view class="metric-label">身高cm</view>
+            <view class="metric-value {{!item.metrics.height.hasValue ? 'missing' : ''}}">{{item.metrics.height.valueText}}</view>
+            <view wx:if="{{item.metrics.height.hasValue && item.metrics.height.percentile}}" class="metric-pill {{item.metrics.height.statusClass}}">
+              <text>{{item.metrics.height.percentile}}</text><text class="metric-status">{{item.metrics.height.status}}</text>
+            </view>
+          </view>
+          <view class="metric-item">
+            <view class="metric-label">体重kg</view>
+            <view class="metric-value {{!item.metrics.weight.hasValue ? 'missing' : ''}}">{{item.metrics.weight.valueText}}</view>
+            <view wx:if="{{item.metrics.weight.hasValue && item.metrics.weight.percentile}}" class="metric-pill {{item.metrics.weight.statusClass}}">
+              <text>{{item.metrics.weight.percentile}}</text><text class="metric-status">{{item.metrics.weight.status}}</text>
+            </view>
+          </view>
+          <view class="metric-item">
+            <view class="metric-label">头围cm</view>
+            <view class="metric-value {{!item.metrics.hc.hasValue ? 'missing' : ''}}">{{item.metrics.hc.valueText}}</view>
+            <view wx:if="{{item.metrics.hc.hasValue && item.metrics.hc.percentile}}" class="metric-pill {{item.metrics.hc.statusClass}}">
+              <text>{{item.metrics.hc.percentile}}</text><text class="metric-status">{{item.metrics.hc.status}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view wx:else class="chart-card">
+      <view class="standard-pill">WHO 0-24月生长标准</view>
+      <block wx:if="{{records.length > 0}}">
+        <view class="canvas-wrap"
+          bindtouchstart="onChartTouchStart"
+          bindtouchmove="onChartTouchMove"
+          bindtouchend="onChartTouchEnd">
+          <canvas type="2d" id="growthCanvas" class="growth-canvas"></canvas>
+        </view>
+        <view class="chart-source">参考来源：WHO Child Growth Standards</view>
+        <view class="chart-controls">
+          <view class="chart-legend">
+            <view class="legend-item"><view class="legend-line solid"></view><text>宝宝</text></view>
+            <view class="legend-item"><view class="legend-line dashed"></view><text>参考线</text></view>
+            <view class="legend-item"><view class="legend-area"></view><text>P3-P97</text></view>
+          </view>
+          <view wx:if="{{chartScale > 1}}" class="reset-zoom" bindtap="resetZoom">重置</view>
+        </view>
+        <view class="zoom-hint" wx:if="{{!zoomHintHidden}}">双指缩放 · 单指拖动</view>
+      </block>
+      <view wx:else class="chart-empty">
+        <view class="empty-title">暂无曲线数据</view>
+        <view class="empty-desc">先添加一条测量记录，再查看成长曲线。</view>
+        <view class="empty-add" bindtap="addRecord">添加记录</view>
+      </view>
+    </view>
+  </view>
+</view>

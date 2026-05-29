@@ -1,0 +1,51 @@
+.tab-bar {
+  display: flex;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 108rpx;
+  background: #fff;
+  border-top: 1rpx solid #e5e5e5;
+  padding-bottom: env(safe-area-inset-bottom);
+  z-index: 999;
+}
+
+.tab-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-top: 8rpx;
+}
+
+.tab-icon {
+  width: 42rpx;
+  height: 42rpx;
+  margin-bottom: 4rpx;
+}
+
+.tab-symbol {
+  height: 42rpx;
+  line-height: 30rpx;
+  margin-bottom: 4rpx;
+  font-size: 44rpx;
+  font-weight: 700;
+  color: #999;
+}
+
+.tab-symbol.active {
+  color: #FF9AA2;
+}
+
+.tab-text {
+  font-size: 24rpx;
+  color: #999;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.tab-text.active {
+  color: #FF9AA2;
+  font-weight: 500;
+}

@@ -1,0 +1,16 @@
+# 敏感配置（含 API Key / Secret）
+miniprogram/config.js
+cloudfunctions/speechToText/secret.js
+cloudfunctions/parseRecord/secret.js
+
+# 微信开发者工具
+project.config.json
+project.private.config.json
+
+# 依赖
+node_modules/
+miniprogram_npm/
+
+# 系统文件
+.DS_Store
+Thumbs.db

@@ -1,0 +1,8 @@
+{
+  "usingComponents": {
+    "top-nav": "../../components/top-nav/top-nav"
+  },
+  "navigationStyle": "custom",
+  "navigationBarTitleText": "每日待办",
+  "enablePullDownRefresh": true
+}

@@ -1,0 +1,9 @@
+{
+  "name": "getStats",
+  "version": "1.0.0",
+  "description": "统计数据聚合",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

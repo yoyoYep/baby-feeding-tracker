@@ -1,0 +1,63 @@
+.todo-edit-page {
+  padding-bottom: 140rpx;
+}
+
+.picker-input {
+  color: #222;
+}
+
+.section-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #222;
+  margin-bottom: 24rpx;
+}
+
+.inline-note {
+  color: #777;
+  font-size: 28rpx;
+  line-height: 1.6;
+}
+
+.compact-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24rpx;
+}
+
+.tag-group {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.dosage-row {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.dosage-input {
+  width: auto;
+}
+
+.unit-group {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.save-btn {
+  width: 100%;
+  margin-top: 10rpx;
+}
+
+.delete-btn {
+  width: 100%;
+  margin-top: 24rpx;
+  border-radius: 50rpx;
+  background: #fff;
+  color: #F44336;
+  border: 1rpx solid #F44336;
+  padding: 20rpx 60rpx;
+  font-size: 32rpx;
+}

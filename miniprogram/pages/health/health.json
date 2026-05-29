@@ -1,0 +1,8 @@
+{
+  "usingComponents": {
+    "top-nav": "../../components/top-nav/top-nav",
+    "voice-input": "../../components/voice-input/voice-input"
+  },
+  "navigationStyle": "custom",
+  "navigationBarTitleText": "健康"
+}

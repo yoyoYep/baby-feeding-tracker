@@ -1,0 +1,71 @@
+<top-nav title="每日待办" />
+
+<view wx:if="{{successNotice}}" class="success-notice">
+  <view class="success-mark">✓</view>
+  <text>{{successNotice}}</text>
+</view>
+
+<view class="container todo-page">
+  <view class="date-bar card">
+    <view class="date-nav prev" bindtap="prevDay">‹</view>
+    <view class="date-center">
+      <picker mode="date" value="{{dateStr}}" bindchange="onDateChange">
+        <view class="date-main">
+          <text class="date-label">{{dateLabel}}</text>
+          <text class="date-str">{{dateStr}}</text>
+        </view>
+      </picker>
+    </view>
+    <view class="date-nav next" bindtap="nextDay">›</view>
+    <view wx:if="{{!isToday}}" class="today-btn" bindtap="goToday">今天</view>
+  </view>
+
+  <view class="summary-row">
+    <view class="summary-item">
+      <text class="summary-value">{{stats.total}}</text>
+      <text class="summary-label">全部</text>
+    </view>
+    <view class="summary-item">
+      <text class="summary-value done">{{stats.done}}</text>
+      <text class="summary-label">完成</text>
+    </view>
+    <view class="summary-item">
+      <text class="summary-value overdue">{{stats.overdue}}</text>
+      <text class="summary-label">过期</text>
+    </view>
+  </view>
+
+  <view wx:if="{{todos.length === 0}}" class="empty-card card">
+    <text class="empty-title">今天还没有待办</text>
+    <text class="empty-desc">添加量体温、吃药、疫苗等健康事项。</text>
+  </view>
+
+  <view wx:else class="todo-list">
+    <view class="todo-item card {{item.done ? 'is-done' : ''}}" wx:for="{{todos}}" wx:key="_id">
+      <view class="todo-time">
+        <text>{{item.time}}</text>
+      </view>
+      <view class="todo-main" bindtap="editTodo" data-id="{{item._id}}">
+        <view class="todo-title-row">
+          <text class="todo-icon">{{item.icon}}</text>
+          <text class="todo-title">{{item.title}}</text>
+          <text class="todo-status {{item.statusClass}}">{{item.statusText}}</text>
+        </view>
+        <view class="todo-desc" wx:if="{{item.desc}}">{{item.desc}}</view>
+        <view class="todo-schedule">{{item.scheduleText}}</view>
+      </view>
+      <view class="todo-actions">
+        <view class="complete-btn {{item.done ? 'done' : ''}} {{item.archived ? 'archived' : ''}}" bindtap="completeTodo" data-id="{{item._id}}">
+          {{item.archived ? '×' : (item.done ? '↶' : '✓')}}
+        </view>
+        <view class="more-btn" catchtap="onTodoMore" data-id="{{item._id}}">•••</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="add-todo-btn"
+    style="left:{{addBtnX}}px; top:{{addBtnY}}px;"
+    bindtouchstart="onAddTouchStart"
+    bindtouchmove="onAddTouchMove"
+    bindtouchend="onAddTouchEnd">＋</view>
+</view>

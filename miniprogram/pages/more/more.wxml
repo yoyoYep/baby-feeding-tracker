@@ -1,0 +1,19 @@
+<top-nav title="更多" />
+
+<view class="container more-page">
+  <view class="tool-list">
+    <view
+      class="tool-item {{item.accent}}"
+      wx:for="{{tools}}"
+      wx:key="title"
+      data-url="{{item.url}}"
+      bindtap="goTool">
+      <view class="tool-icon">{{item.icon}}</view>
+      <view class="tool-copy">
+        <text class="tool-title">{{item.title}}</text>
+        <text class="tool-subtitle">{{item.subtitle}}</text>
+      </view>
+      <text class="tool-arrow">›</text>
+    </view>
+  </view>
+</view>

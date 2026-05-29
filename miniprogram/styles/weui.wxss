@@ -1,0 +1,129 @@
+/* WeUI 精简版 - 仅包含项目用到的组件样式 */
+
+/* Cell */
+.weui-cell {
+  padding: 24rpx 30rpx;
+  display: flex;
+  align-items: center;
+}
+
+.weui-cell__hd {
+  margin-right: 20rpx;
+}
+
+.weui-cell__bd {
+  flex: 1;
+}
+
+.weui-cell__ft {
+  color: #999;
+  font-size: 28rpx;
+}
+
+/* Dialog */
+.weui-dialog {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.weui-dialog__mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.weui-dialog__wrp {
+  position: relative;
+  background: #fff;
+  border-radius: 24rpx;
+  width: 80%;
+  max-width: 600rpx;
+  overflow: hidden;
+}
+
+.weui-dialog__hd {
+  padding: 40rpx 40rpx 20rpx;
+  text-align: center;
+  font-size: 34rpx;
+  font-weight: 500;
+}
+
+.weui-dialog__bd {
+  padding: 0 40rpx 40rpx;
+  text-align: center;
+  font-size: 28rpx;
+  color: #666;
+}
+
+.weui-dialog__ft {
+  display: flex;
+  border-top: 1rpx solid #eee;
+}
+
+.weui-dialog__btn {
+  flex: 1;
+  padding: 24rpx;
+  text-align: center;
+  font-size: 30rpx;
+}
+
+.weui-dialog__btn_primary {
+  color: #FF9AA2;
+  font-weight: 500;
+}
+
+/* ActionSheet */
+.weui-actionsheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #fff;
+  border-radius: 24rpx 24rpx 0 0;
+  z-index: 1001;
+  transform: translateY(100%);
+  transition: transform 0.3s ease;
+}
+
+.weui-actionsheet_show {
+  transform: translateY(0);
+}
+
+/* Toast */
+.weui-toast {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  padding: 24rpx 40rpx;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  z-index: 2000;
+}
+
+/* Loading */
+.weui-loading {
+  width: 40rpx;
+  height: 40rpx;
+  border: 4rpx solid #e5e5e5;
+  border-top-color: #FF9AA2;
+  border-radius: 50%;
+  animation: weui-loading-spin 0.8s linear infinite;
+}
+
+@keyframes weui-loading-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

@@ -1,0 +1,13 @@
+<view class="timer-wrap">
+  <view class="timer-display">
+    <text class="timer-text {{running ? 'running' : ''}}">{{displayTime}}</text>
+  </view>
+  <view class="timer-btns">
+    <button wx:if="{{!running && !paused}}" class="btn-start" bindtap="start">
+      {{startText}}
+    </button>
+    <button wx:if="{{running}}" class="btn-stop" bindtap="stop">
+      {{stopText}}
+    </button>
+  </view>
+</view>

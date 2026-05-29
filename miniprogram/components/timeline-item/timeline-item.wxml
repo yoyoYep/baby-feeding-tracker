@@ -1,0 +1,22 @@
+<view class="swipe-wrapper"
+  bindtouchstart="onTouchStart"
+  bindtouchmove="onTouchMove"
+  bindtouchend="onTouchEnd">
+  <view class="item {{item.type}}" style="transform:translateX({{offsetX}}rpx)">
+    <view class="item-icon">
+      <text>{{iconMap[item.type]}}</text>
+    </view>
+    <view class="item-content">
+      <view class="item-title">{{item.title}}</view>
+      <view class="item-desc" wx:if="{{item.desc}}">{{item.desc}}</view>
+    </view>
+    <view class="item-meta">
+      <text class="item-recorder" wx:if="{{item.recordedBy}}">{{item.recordedBy}}</text>
+      <text class="item-time">{{item.timeStr}}</text>
+    </view>
+    <view class="item-more" catchtap="onMoreTap">
+      <text>⋮</text>
+    </view>
+  </view>
+  <view class="delete-btn" catchtap="onDelete">删除</view>
+</view>

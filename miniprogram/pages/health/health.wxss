@@ -1,0 +1,193 @@
+.mini-voice {
+  display: flex;
+  justify-content: center;
+  padding: 10rpx 0;
+  transform: scale(0.6);
+}
+
+/* 体温状态卡 */
+.temp-status-card {
+  text-align: center;
+  padding: 40rpx;
+}
+
+.temp-current {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.temp-value {
+  font-size: 60rpx;
+  font-weight: 600;
+}
+
+.temp-value.normal { color: #4CAF50; }
+.temp-value.low_fever { color: #FF9800; }
+.temp-value.high_fever { color: #F44336; }
+
+.temp-ago {
+  font-size: 24rpx;
+  color: #999;
+  margin-top: 8rpx;
+}
+
+.temp-placeholder {
+  color: #ccc;
+  font-size: 28rpx;
+}
+
+/* Tab */
+.tab-bar {
+  display: flex;
+  background: #fff;
+  border-radius: 16rpx;
+  margin-bottom: 20rpx;
+  overflow: hidden;
+}
+
+.tab-item {
+  flex: 1;
+  text-align: center;
+  padding: 24rpx;
+  font-size: 28rpx;
+  color: #999;
+}
+
+.tab-item.active {
+  color: #FF9AA2;
+  font-weight: 600;
+  border-bottom: 4rpx solid #FF9AA2;
+}
+
+/* 表单 */
+.tag-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.temp-input {
+  font-size: 40rpx;
+  text-align: center;
+  font-weight: 500;
+}
+
+.dosage-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.dosage-input {
+  width: 200rpx;
+}
+
+.unit-group {
+  display: flex;
+  gap: 8rpx;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.save-btn {
+  margin-top: 30rpx;
+  width: 100% !important;
+}
+
+/* 药品快选 */
+.card-hint {
+  font-size: 22rpx;
+  color: #bbb;
+}
+
+.med-quick-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-top: 16rpx;
+}
+
+.med-quick-item {
+  background: #FFF5F5;
+  border: 1rpx solid #FFD6D6;
+  border-radius: 16rpx;
+  padding: 16rpx 24rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 140rpx;
+}
+
+.med-name {
+  font-size: 26rpx;
+  font-weight: 500;
+  color: #333;
+}
+
+.med-dosage {
+  font-size: 22rpx;
+  color: #999;
+  margin-top: 4rpx;
+}
+
+/* 历史列表 */
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+
+.card-title {
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+.history-list {
+  margin-top: 10rpx;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #f8f8f8;
+}
+
+.history-item:last-child {
+  border-bottom: none;
+}
+
+.history-left {
+  display: flex;
+  flex-direction: column;
+}
+
+.history-value {
+  font-size: 28rpx;
+  font-weight: 500;
+}
+
+.history-value.normal { color: #4CAF50; }
+.history-value.low_fever { color: #FF9800; }
+.history-value.high_fever { color: #F44336; }
+
+.history-method {
+  font-size: 22rpx;
+  color: #999;
+  margin-top: 4rpx;
+}
+
+.history-time {
+  font-size: 24rpx;
+  color: #bbb;
+}
+
+.empty-tip {
+  text-align: center;
+  padding: 40rpx;
+  color: #ccc;
+  font-size: 26rpx;
+}
