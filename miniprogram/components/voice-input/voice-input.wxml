@@ -11,7 +11,7 @@
     </view>
   </view>
   <view class="keyboard-btn" bindtap="manualInput">
-    <text>⌨</text>
+    <text class="keyboard-icon">⌨</text>
   </view>
 
   <!-- 识别/解析中加载态 -->

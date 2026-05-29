@@ -12,17 +12,55 @@ App({
       this._loadLocalConfig()
       return
     }
+
+    let runtimeConfig = {}
     try {
-      const { cloudEnvId } = require('./config')
+      runtimeConfig = require('./config')
+    } catch (e) {
+      console.warn('未找到云开发配置，使用本地存储模式')
+      this._loadLocalConfig()
+      return
+    }
+
+    const { cloudEnvId, enableCloud = true } = runtimeConfig
+    if (!enableCloud || !cloudEnvId || cloudEnvId === '你的云开发环境ID') {
+      console.warn('云开发未启用，使用本地存储模式')
+      this._loadLocalConfig()
+      return
+    }
+
+    if (this._isTouristAppId()) {
+      console.warn('当前为游客 AppID，跳过云开发初始化')
+      this._loadLocalConfig()
+      return
+    }
+
+    try {
       await wx.cloud.init({ traceUser: true, env: cloudEnvId })
       this.globalData.cloudReady = true
-      console.log('云开发已连接')
-      await this._checkMember()
+      const cloudUsable = await this._checkMember()
+      if (!cloudUsable) {
+        this.globalData.cloudReady = false
+        this._loadLocalConfig()
+        return
+      }
       await this._loadConfig()
+      console.log('云开发已连接')
     } catch (e) {
       this.globalData.cloudReady = false
       console.warn('云开发未开通，使用本地存储模式', e)
       this._loadLocalConfig()
+    }
+  },
+
+  _isTouristAppId() {
+    if (!wx.getAccountInfoSync) return false
+    try {
+      const accountInfo = wx.getAccountInfoSync()
+      const miniProgram = accountInfo && accountInfo.miniProgram
+      return miniProgram && miniProgram.appId === 'touristappid'
+    } catch (e) {
+      return false
     }
   },
 
@@ -35,9 +73,12 @@ App({
       } else {
         this.globalData.needsRoleSetup = true
       }
+      return true
     } catch (e) {
-      console.warn('获取成员信息失败', e)
-      this.globalData.needsRoleSetup = true
+      console.warn('云开发调用不可用，使用本地存储模式', e)
+      this.globalData.currentMember = null
+      this.globalData.needsRoleSetup = false
+      return false
     }
   },
 

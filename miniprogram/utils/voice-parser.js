@@ -126,80 +126,92 @@ function parseBathText(text, confidence = 0.6) {
   }
 }
 
+function canUseCloudParser() {
+  try {
+    if (typeof getApp !== 'function' || typeof wx === 'undefined') return false
+    const app = getApp()
+    return !!(app && app.globalData && app.globalData.cloudReady && wx.cloud && wx.cloud.callFunction)
+  } catch (e) {
+    return false
+  }
+}
+
 async function parseVoiceText(text) {
   if (!text || text.trim() === '') return null
 
-  try {
-    const res = await wx.cloud.callFunction({
-      name: 'parseRecord',
-      data: { text }
-    })
+  if (canUseCloudParser()) {
+    try {
+      const res = await wx.cloud.callFunction({
+        name: 'parseRecord',
+        data: { text }
+      })
 
-    if (res.result && res.result.success) {
-      const parsed = res.result.data
-      console.log('[voice-parser] DeepSeek返回:', JSON.stringify(parsed))
-      const bathOverride = parseBathText(text, 0.95)
-      if (bathOverride) return bathOverride
+      if (res.result && res.result.success) {
+        const parsed = res.result.data
+        console.log('[voice-parser] DeepSeek返回:', JSON.stringify(parsed))
+        const bathOverride = parseBathText(text, 0.95)
+        if (bathOverride) return bathOverride
 
-      let startTime = resolveTime(parsed.startTime)
-      let endTime = null
+        let startTime = resolveTime(parsed.startTime)
+        let endTime = null
 
-      if (parsed.endTime) {
-        endTime = resolveTime(parsed.endTime)
-      }
+        if (parsed.endTime) {
+          endTime = resolveTime(parsed.endTime)
+        }
 
-      // 用 duration 修正时间
-      if (parsed.duration) {
-        const durationMs = parsed.duration * 60 * 1000
-        if (!endTime) {
-          // 没有 endTime，根据 startTime 是否为 "now" 决定方向
-          const startIsNow = !parsed.startTime || parsed.startTime === 'now'
-          if (startIsNow) {
-            endTime = new Date()
+        // 用 duration 修正时间
+        if (parsed.duration) {
+          const durationMs = parsed.duration * 60 * 1000
+          if (!endTime) {
+            // 没有 endTime，根据 startTime 是否为 "now" 决定方向
+            const startIsNow = !parsed.startTime || parsed.startTime === 'now'
+            if (startIsNow) {
+              endTime = new Date()
+              startTime = new Date(endTime.getTime() - durationMs)
+            } else {
+              endTime = new Date(startTime.getTime() + durationMs)
+            }
+          } else if (Math.abs(endTime - startTime) < 60000) {
+            // startTime 和 endTime 几乎相同（都解析成了 now），用 duration 倒推
+            endTime = new Date(Math.max(startTime.getTime(), endTime.getTime()))
             startTime = new Date(endTime.getTime() - durationMs)
-          } else {
-            endTime = new Date(startTime.getTime() + durationMs)
           }
-        } else if (Math.abs(endTime - startTime) < 60000) {
-          // startTime 和 endTime 几乎相同（都解析成了 now），用 duration 倒推
-          endTime = new Date(Math.max(startTime.getTime(), endTime.getTime()))
-          startTime = new Date(endTime.getTime() - durationMs)
+        }
+
+        // 跨午夜修正：endTime 比 startTime 早，说明是跨天（如23:00→01:30）
+        if (startTime && endTime && endTime < startTime) {
+          const diffHours = (startTime - endTime) / (1000 * 60 * 60)
+          if (diffHours > 12) {
+            // endTime 在 startTime 之前超过12小时，把 startTime 往前推一天
+            startTime.setDate(startTime.getDate() - 1)
+          }
+        }
+
+        const action = (parsed.data && parsed.data.action) || parsed.action || null
+        const futureFeedingStart = parsed.type === 'feeding' ? getFutureFeedingStartTime(text) : null
+
+        if (futureFeedingStart) {
+          startTime = futureFeedingStart
+          endTime = null
+          parsed.status = 'ongoing'
+          parsed.data = parsed.data || {}
+          parsed.data.action = 'start'
+          parsed.data.amount = null
+        }
+
+        return {
+          type: parsed.type,
+          data: parsed.data || {},
+          action: futureFeedingStart ? 'start' : action,
+          startTime,
+          endTime,
+          status: parsed.status || 'completed',
+          confidence: 0.95
         }
       }
-
-      // 跨午夜修正：endTime 比 startTime 早，说明是跨天（如23:00→01:30）
-      if (startTime && endTime && endTime < startTime) {
-        const diffHours = (startTime - endTime) / (1000 * 60 * 60)
-        if (diffHours > 12) {
-          // endTime 在 startTime 之前超过12小时，把 startTime 往前推一天
-          startTime.setDate(startTime.getDate() - 1)
-        }
-      }
-
-      const action = (parsed.data && parsed.data.action) || parsed.action || null
-      const futureFeedingStart = parsed.type === 'feeding' ? getFutureFeedingStartTime(text) : null
-
-      if (futureFeedingStart) {
-        startTime = futureFeedingStart
-        endTime = null
-        parsed.status = 'ongoing'
-        parsed.data = parsed.data || {}
-        parsed.data.action = 'start'
-        parsed.data.amount = null
-      }
-
-      return {
-        type: parsed.type,
-        data: parsed.data || {},
-        action: futureFeedingStart ? 'start' : action,
-        startTime,
-        endTime,
-        status: parsed.status || 'completed',
-        confidence: 0.95
-      }
+    } catch (e) {
+      console.warn('云函数解析失败，回退到本地解析', e)
     }
-  } catch (e) {
-    console.warn('云函数解析失败，回退到本地解析', e)
   }
 
   return localParse(text)

@@ -88,6 +88,7 @@
 
 ```javascript
 module.exports = {
+  enableCloud: true,              // 本地只想看界面、不连云开发时可以临时设为 false
   cloudEnvId: '你的云开发环境ID'  // 如 'baby-tracker-8gxyz123'
 }
 ```

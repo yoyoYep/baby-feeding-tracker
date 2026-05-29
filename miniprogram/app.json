@@ -52,11 +52,6 @@
       }
     ]
   },
-  "permission": {
-    "scope.record": {
-      "desc": "需要使用麦克风进行语音记录"
-    }
-  },
   "sitemapLocation": "sitemap.json",
   "style": "v2",
   "lazyCodeLoading": "requiredComponents"

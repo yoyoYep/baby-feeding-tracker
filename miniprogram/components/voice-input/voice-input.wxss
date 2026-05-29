@@ -58,7 +58,7 @@
   flex-shrink: 0;
 }
 
-.keyboard-btn text {
+.keyboard-icon {
   font-size: 32rpx;
 }
 

@@ -81,6 +81,13 @@ Component({
       this.setData({ parsing: true, parsingText: '识别中...' })
 
       try {
+        const app = getApp()
+        if (!app.globalData.cloudReady) {
+          this.setData({ parsing: false })
+          this._showTextInput('云开发未连接')
+          return
+        }
+
         const uploadRes = await wx.cloud.uploadFile({
           cloudPath: `voice/${Date.now()}.mp3`,
           filePath
