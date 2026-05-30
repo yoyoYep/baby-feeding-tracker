@@ -1,9 +1,18 @@
 const { normalizeFeedingPlanConfig } = require('./utils/feeding-plan')
 const db = require('./utils/db')
+const localReminders = require('./utils/local-reminders')
 
 App({
   onLaunch() {
     this.globalData.cloudReadyPromise = this.initCloud()
+  },
+
+  onShow() {
+    localReminders.startForegroundReminderLoop()
+  },
+
+  onHide() {
+    localReminders.stopForegroundReminderLoop()
   },
 
   async initCloud() {
@@ -45,7 +54,6 @@ App({
         return
       }
       await this._loadConfig()
-      console.log('云开发已连接')
     } catch (e) {
       this.globalData.cloudReady = false
       console.warn('云开发未开通，使用本地存储模式', e)

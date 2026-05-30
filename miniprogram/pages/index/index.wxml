@@ -132,6 +132,7 @@
       <text>{{feedingPlan.reminderText}}</text>
       <text>{{feedingPlan.quietText}}</text>
     </view>
+    <view wx:if="{{feedingReminderCountdown}}" class="feeding-plan-snooze">{{feedingReminderCountdown}}</view>
     <scroll-view scroll-x class="feeding-plan-scroll">
       <view class="feeding-plan-times">
         <view wx:for="{{feedingPlan.planItems}}" wx:key="key" class="feeding-plan-pill {{item.state}}">

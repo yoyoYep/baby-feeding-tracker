@@ -485,6 +485,18 @@
   line-height: 1.25;
 }
 
+.feeding-plan-snooze {
+  display: inline-flex;
+  margin-top: 14rpx;
+  padding: 8rpx 14rpx;
+  border-radius: 8rpx;
+  background: #FFF7E6;
+  color: #B35A00;
+  font-size: 23rpx;
+  line-height: 1.25;
+  font-weight: 700;
+}
+
 .feeding-plan-scroll {
   margin-top: 18rpx;
   width: 100%;

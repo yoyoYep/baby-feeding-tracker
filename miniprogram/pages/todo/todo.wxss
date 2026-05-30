@@ -240,6 +240,17 @@
   color: #999;
 }
 
+.todo-snooze {
+  display: inline-flex;
+  margin-top: 10rpx;
+  padding: 6rpx 12rpx;
+  border-radius: 8rpx;
+  background: #FFF7E6;
+  color: #B35A00;
+  font-size: 23rpx;
+  line-height: 1.25;
+}
+
 .todo-actions {
   width: 98rpx;
   flex-shrink: 0;

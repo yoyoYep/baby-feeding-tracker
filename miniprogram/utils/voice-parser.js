@@ -148,7 +148,6 @@ async function parseVoiceText(text) {
 
       if (res.result && res.result.success) {
         const parsed = res.result.data
-        console.log('[voice-parser] DeepSeek返回:', JSON.stringify(parsed))
         const bathOverride = parseBathText(text, 0.95)
         if (bathOverride) return bathOverride
 

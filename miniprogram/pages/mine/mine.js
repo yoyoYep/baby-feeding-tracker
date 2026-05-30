@@ -261,12 +261,10 @@ Page({
   },
 
   closeFamily() {
-    console.log('[mine] closeFamily 触发')
     this.setData({ showFamily: false })
   },
 
   editMemberRole(e) {
-    console.log('[mine] editMemberRole 触发, dataset:', JSON.stringify(e.currentTarget.dataset))
     const { id, role } = e.currentTarget.dataset
     if (!id) {
       wx.showToast({ title: '获取成员信息失败', icon: 'none' })
@@ -324,5 +322,5 @@ Page({
     })
   },
 
-  noop() { console.log('[mine] noop 触发 (dialog catchtap)') }
+  noop() {}
 })

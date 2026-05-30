@@ -1,6 +1,7 @@
 const db = require('../../utils/db')
 const { getPercentile } = require('../../utils/growth-standard')
 const { buildFeedingPlan, normalizeFeedingPlanConfig } = require('../../utils/feeding-plan')
+const { getFeedingReminderKey, getSnoozeCountdownText } = require('../../utils/local-reminders')
 
 const DELAYED_FEEDING_KEY = 'delayed_feeding_start'
 const DELAYED_START_MIN_MS = 5000
@@ -29,6 +30,7 @@ Page({
     sleepElapsed: '',
     defaultFeedingAmount: 0,
     feedingPlan: null,
+    feedingReminderCountdown: '',
     delayedFeeding: null,
     delayedFeedingLeft: '',
     timeline: [],
@@ -186,12 +188,6 @@ Page({
         merged.push(r)
       })
       const records = merged.filter(r => this._recordOverlapsRange(r, start, end))
-
-      console.log('[loadDayData] 查看日期:', start.toLocaleDateString(), '主查询:', (res.data || []).length, '补充查询:', (prevRes.data || []).length, '合并后:', merged.length, '过滤后:', records.length)
-      if (merged.length !== records.length) {
-        const dropped = merged.filter(r => !this._recordOverlapsRange(r, start, end))
-        console.log('[loadDayData] 被过滤掉的记录:', dropped.map(r => ({ id: r._id, type: r.type, startTime: r.startTime && new Date(r.startTime).toLocaleString() })))
-      }
 
       const stats = this._calcStats(records, start, end)
       const timeline = this._formatTimeline(records, start, end)
@@ -731,7 +727,9 @@ Page({
 
   _updateFeedingPlan() {
     if (!this.data.isToday) {
-      if (this.data.feedingPlan) this.setData({ feedingPlan: null })
+      if (this.data.feedingPlan || this.data.feedingReminderCountdown) {
+        this.setData({ feedingPlan: null, feedingReminderCountdown: '' })
+      }
       return
     }
     const app = getApp()
@@ -743,6 +741,26 @@ Page({
       now: new Date()
     })
     this.setData({ feedingPlan: plan })
+    this._updateFeedingReminderCountdown(plan)
+  },
+
+  refreshLocalReminderCountdowns() {
+    this._updateFeedingReminderCountdown()
+  },
+
+  _updateFeedingReminderCountdown(plan = this.data.feedingPlan) {
+    if (!this.data.isToday || !plan || !plan.enabled) {
+      if (this.data.feedingReminderCountdown) this.setData({ feedingReminderCountdown: '' })
+      return
+    }
+    const nextItem = (plan.planItems || []).find(item => item.state === 'next')
+    const date = this.data.currentDate || new Date()
+    const dateStr = this._formatDateStr(date)
+    const key = getFeedingReminderKey(dateStr, nextItem)
+    const text = getSnoozeCountdownText(dateStr, key)
+    if (this.data.feedingReminderCountdown !== text) {
+      this.setData({ feedingReminderCountdown: text })
+    }
   },
 
   _startFeedingPlanTimer() {

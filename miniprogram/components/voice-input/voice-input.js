@@ -92,13 +92,11 @@ Component({
           cloudPath: `voice/${Date.now()}.mp3`,
           filePath
         })
-        console.log('[voice-input] 音频已上传:', uploadRes.fileID)
 
         const sttRes = await wx.cloud.callFunction({
           name: 'speechToText',
           data: { fileID: uploadRes.fileID }
         })
-        console.log('[voice-input] ASR结果:', JSON.stringify(sttRes.result))
 
         wx.cloud.deleteFile({ fileList: [uploadRes.fileID] }).catch(() => {})
 

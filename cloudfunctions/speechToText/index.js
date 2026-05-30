@@ -76,7 +76,6 @@ function callASR(params) {
 
 exports.main = async (event) => {
   const { fileID } = event
-  console.log('[speechToText] 收到请求, fileID:', fileID)
 
   if (!fileID) {
     return { success: false, error: '缺少音频文件ID' }
@@ -85,7 +84,6 @@ exports.main = async (event) => {
   try {
     const res = await cloud.downloadFile({ fileID })
     const audioBuffer = res.fileContent
-    console.log('[speechToText] 音频下载成功, 大小:', audioBuffer.length, 'bytes')
 
     if (audioBuffer.length < 100) {
       return { success: false, error: '音频文件过小，可能上传失败' }
@@ -101,10 +99,7 @@ exports.main = async (event) => {
       DataLen: audioBuffer.length
     }
 
-    console.log('[speechToText] 调用ASR, 音频大小:', audioBuffer.length, ', base64长度:', base64Audio.length)
-
     const result = await callASR(params)
-    console.log('[speechToText] ASR响应:', JSON.stringify(result).substring(0, 500))
 
     if (result.Response && result.Response.Result) {
       return { success: true, text: result.Response.Result }

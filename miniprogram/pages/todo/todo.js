@@ -1,5 +1,6 @@
 const db = require('../../utils/db')
 const { matchesTodoDate, getTodoScheduleText } = require('../../utils/todo-schedule')
+const { getTodoReminderKey, getSnoozeCountdownText } = require('../../utils/local-reminders')
 
 const TYPE_META = {
   health_temp: { label: '量体温', icon: '🌡️' },
@@ -51,6 +52,11 @@ Page({
     }
     this._initAddButton()
     this.loadTodos()
+    this._startSnoozeCountdownTimer()
+  },
+
+  onHide() {
+    this._clearSnoozeCountdownTimer()
   },
 
   onUnload() {
@@ -58,6 +64,7 @@ Page({
       clearTimeout(this._successNoticeTimer)
       this._successNoticeTimer = null
     }
+    this._clearSnoozeCountdownTimer()
   },
 
   _initAddButton() {
@@ -131,6 +138,8 @@ Page({
     const scheduledAt = this._buildScheduledTime(dateStr, todo.time)
     const done = !!doneRecord
     const overdue = !done && scheduledAt.getTime() < Date.now()
+    const reminderKey = getTodoReminderKey(todo, dateStr)
+    const snoozeText = !done ? getSnoozeCountdownText(dateStr, reminderKey) : ''
     const data = todo.data || {}
     const descParts = []
     let title = todo.title || meta.label
@@ -164,7 +173,44 @@ Page({
       statusText: done ? '已完成' : (overdue ? '已过期' : '未完成'),
       statusClass: done ? 'done' : (overdue ? 'overdue' : 'pending'),
       recordId: doneRecord && doneRecord._id || '',
-      scheduleText: this._getScheduleText(todo)
+      scheduleText: this._getScheduleText(todo),
+      snoozeText
+    }
+  },
+
+  _startSnoozeCountdownTimer() {
+    this._clearSnoozeCountdownTimer()
+    this._snoozeCountdownTimer = setInterval(() => {
+      this._refreshSnoozeCountdowns()
+    }, 60000)
+  },
+
+  _clearSnoozeCountdownTimer() {
+    if (this._snoozeCountdownTimer) {
+      clearInterval(this._snoozeCountdownTimer)
+      this._snoozeCountdownTimer = null
+    }
+  },
+
+  refreshLocalReminderCountdowns() {
+    this._refreshSnoozeCountdowns()
+  },
+
+  _refreshSnoozeCountdowns() {
+    const todos = this.data.todos || []
+    if (!todos.length) return
+    const dateStr = this.data.dateStr
+    const now = new Date()
+    let changed = false
+    const updated = todos.map(todo => {
+      const reminderKey = getTodoReminderKey(todo, dateStr)
+      const snoozeText = !todo.done && !todo.archived ? getSnoozeCountdownText(dateStr, reminderKey, now) : ''
+      if ((todo.snoozeText || '') === snoozeText) return todo
+      changed = true
+      return { ...todo, snoozeText }
+    })
+    if (changed) {
+      this.setData({ todos: updated })
     }
   },
 
