@@ -52,6 +52,9 @@
       }
     ]
   },
+  "navigateToMiniProgramAppIdList": [
+    "wxada7aab80ba27074"
+  ],
   "sitemapLocation": "sitemap.json",
   "style": "v2",
   "lazyCodeLoading": "requiredComponents"

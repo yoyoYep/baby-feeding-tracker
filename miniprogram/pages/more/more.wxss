@@ -41,6 +41,10 @@
   background: #f0faf3;
 }
 
+.tool-item.music .tool-icon {
+  background: #f4f2ff;
+}
+
 .tool-copy {
   flex: 1;
   min-width: 0;

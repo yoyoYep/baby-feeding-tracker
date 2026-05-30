@@ -1,3 +1,5 @@
+const { openQQMusic } = require('../../utils/qq-music')
+
 Page({
   data: {
     tools: [
@@ -21,6 +23,13 @@ Page({
         icon: '📏',
         accent: 'growth',
         url: '/pages/growth/growth'
+      },
+      {
+        title: 'QQ 音乐',
+        subtitle: '跳转到 QQ 音乐听歌和安抚音乐',
+        icon: '🎵',
+        accent: 'music',
+        action: 'qqMusic'
       }
     ]
   },
@@ -32,7 +41,11 @@ Page({
   },
 
   goTool(e) {
-    const url = e.currentTarget.dataset.url
+    const { url, action } = e.currentTarget.dataset
+    if (action === 'qqMusic') {
+      openQQMusic()
+      return
+    }
     if (!url) return
     wx.navigateTo({ url })
   }
