@@ -7,6 +7,7 @@
 const {
   buildFeedingPlan,
   normalizeFeedingPlanConfig,
+  calcRealisticMax,
   isInQuietMinute,
   nextAllowedMinute
 } = require('../miniprogram/utils/feeding-plan')
@@ -154,6 +155,93 @@ console.log('\n=== AI 建议受本地规则约束 ===')
     aiSuggestion: { nextTime: '13:00' }
   })
   assert(!rejectedPlan.ai.applied, '低于最短间隔的 AI 建议会被拒绝')
+})()
+
+console.log('\n=== 时间紧张提前预警 ===')
+
+;(() => {
+  // 21:00 还剩 3 顿，间隔 150 分钟到 23:30 能排 2 顿（21:00 和 23:30）
+  const records = [
+    feeding('f1', '2026-05-29', '06:30'),
+    feeding('f2', '2026-05-29', '09:30'),
+    feeding('f3', '2026-05-29', '12:30'),
+    feeding('f4', '2026-05-29', '18:30')
+  ]
+  const plan = buildFeedingPlan(records, {
+    date: at('2026-05-29', '00:00'),
+    now: at('2026-05-29', '21:00'),
+    config: { feedingDailyTargetCount: 7, feedingMinInterval: 150 }
+  })
+  assert(plan.status === 'tight', '时间紧张时 status 为 tight')
+  assert(plan.realisticMax < plan.remainingCount, 'realisticMax 小于剩余顿数')
+  assert(plan.realisticMax === 2, '21:00 到 23:30 间隔 150 分钟最多排 2 顿')
+  assert(plan.warning.includes('最多能排'), '警告包含可执行信息')
+  assert(plan.warning.includes('3'), '警告提示还需的顿数')
+})()
+
+;(() => {
+  // 14:00 已喂 2 顿，剩余 5 顿，到 23:30 有 570 分钟，够排 4 顿
+  const records = [
+    feeding('f1', '2026-05-29', '06:30'),
+    feeding('f2', '2026-05-29', '11:30')
+  ]
+  const plan = buildFeedingPlan(records, {
+    date: at('2026-05-29', '00:00'),
+    now: at('2026-05-29', '14:00'),
+    config: { feedingDailyTargetCount: 7, feedingMinInterval: 150 }
+  })
+  assert(plan.status === 'tight', '下午已能预判紧张')
+  assert(plan.realisticMax === 4, '14:00 到 23:30 间隔 150 分钟可排 4 顿')
+  assert(plan.warning.includes('5'), '警告里有还需 5 顿')
+  assert(plan.warning.includes('4'), '警告里有最多 4 顿')
+  assert(plan.planItems.filter(item => item.source === 'rule').length === 4, '只排出能排的 4 顿')
+})()
+
+;(() => {
+  // 充裕情况：12:00 已喂 3 顿，剩余 4 顿，完全排得下
+  const records = [
+    feeding('f1', '2026-05-29', '06:30'),
+    feeding('f2', '2026-05-29', '09:15'),
+    feeding('f3', '2026-05-29', '12:05')
+  ]
+  const plan = buildFeedingPlan(records, {
+    date: at('2026-05-29', '00:00'),
+    now: at('2026-05-29', '12:10'),
+    config: { feedingDailyTargetCount: 7, feedingMinInterval: 150 }
+  })
+  assert(plan.status !== 'tight', '时间充裕时不标记 tight')
+  assert(plan.realisticMax === 4, '充裕时 realisticMax 等于剩余顿数')
+  assert(!plan.warning, '无警告')
+})()
+
+;(() => {
+  // 极端场景：最后一顿 22:00，下一顿 00:30 落入勿扰被推到 06:00 > 23:30
+  const records = [
+    feeding('f1', '2026-05-29', '07:00'),
+    feeding('f2', '2026-05-29', '10:00'),
+    feeding('f3', '2026-05-29', '13:00'),
+    feeding('f4', '2026-05-29', '16:00'),
+    feeding('f5', '2026-05-29', '22:00')
+  ]
+  const plan = buildFeedingPlan(records, {
+    date: at('2026-05-29', '00:00'),
+    now: at('2026-05-29', '23:05'),
+    config: { feedingDailyTargetCount: 7, feedingMinInterval: 150 }
+  })
+  assert(plan.status === 'tight', '22:00+150分钟推入勿扰后极端紧张')
+  assert(plan.realisticMax === 0, '下一顿被推到勿扰之后，当天无法安排')
+  assert(plan.warning.includes('无法再安排'), '极端场景建议明天提前')
+})()
+
+;(() => {
+  // calcRealisticMax 单元测试
+  const config = normalizeFeedingPlanConfig({ feedingMinInterval: 150 })
+  // 从 21:00(1260) 到 23:30(1410) = 150 分钟 → 1 + floor(150/150) = 2
+  assert(calcRealisticMax(1260, config) === 2, 'calcRealisticMax: 150分钟窗口排2顿')
+  // 从 14:00(840) 到 23:30(1410) = 570 分钟 → 1 + floor(570/150) = 4
+  assert(calcRealisticMax(840, config) === 4, 'calcRealisticMax: 570分钟窗口排4顿')
+  // 从 06:00(360) 到 23:30(1410) = 1050 分钟 → 1 + floor(1050/150) = 8
+  assert(calcRealisticMax(360, config) === 8, 'calcRealisticMax: 1050分钟窗口排8顿')
 })()
 
 console.log(`\n${'='.repeat(40)}`)

@@ -178,6 +178,13 @@ function findMorningWake(records, dayStart, config) {
   return wakes.length ? wakes[wakes.length - 1] : null
 }
 
+function calcRealisticMax(fromMinute, config) {
+  const latestMinute = getLatestPlanMinute(config)
+  const available = latestMinute - fromMinute
+  if (available < 0) return 0
+  return 1 + Math.floor(available / config.feedingMinInterval)
+}
+
 function chooseInterval(anchorMinute, remainingCount, config) {
   const minInterval = config.feedingMinInterval
   const idealInterval = config.feedingIdealInterval
@@ -348,6 +355,10 @@ function buildFeedingPlan(records = [], options = {}) {
   }
 
   nextMinute = roundUpMinute(nextAllowedMinute(nextMinute, config), 5)
+
+  const realisticMax = calcRealisticMax(nextMinute, config)
+  const isTight = futureCount > realisticMax
+
   if (!ongoingSleep && futureCount > 0) {
     const aiResult = applyAiNextMinute(nextMinute, {
       aiSuggestion: options.aiSuggestion,
@@ -362,7 +373,6 @@ function buildFeedingPlan(records = [], options = {}) {
 
   for (let i = 0; i < futureCount; i++) {
     if (nextMinute > latestMinute) {
-      warning = `今天剩余 ${targetCount - completedCount} 顿，当前规则下可能排不完`
       break
     }
     const state = i === 0 ? 'next' : 'future'
@@ -377,6 +387,18 @@ function buildFeedingPlan(records = [], options = {}) {
     const rest = futureCount - i - 1
     if (rest > 0) {
       nextMinute = roundUpMinute(nextAllowedMinute(nextMinute + chooseInterval(nextMinute, rest, config), config), 5)
+    }
+  }
+
+  if (isTight) {
+    const canFit = realisticMax
+    const deadlineLabel = minutesToClock(latestMinute)
+    if (canFit <= 0) {
+      warning = `还需 ${futureCount} 顿但今天已无法再安排，明天尽量提前开始`
+    } else {
+      const firstFutureItem = planItems.find(item => item.state === 'next')
+      const suggestBefore = firstFutureItem ? firstFutureItem.timeLabel : deadlineLabel
+      warning = `还需 ${futureCount} 顿，${deadlineLabel}前最多能排 ${canFit} 顿（间隔${formatDuration(config.feedingMinInterval)}），建议尽早在 ${suggestBefore} 前喂`
     }
   }
 
@@ -396,6 +418,18 @@ function buildFeedingPlan(records = [], options = {}) {
     title = '宝宝睡着'
     nextTimeLabel = '醒后'
     reminderText = `醒后约${config.feedingWakeBuffer}分钟再提醒`
+  } else if (!nextItem && isTight) {
+    status = 'tight'
+    title = '今日计划偏紧'
+    reminderText = warning || '建议手动确认下一顿'
+  } else if (nextItem && isTight) {
+    status = 'tight'
+    title = '计划偏紧'
+    if (nowMinute !== null && nowMinute >= getMinuteInDay(nextItem.time, dayStart)) {
+      reminderText = `现在可以喂，今天最多还能排 ${realisticMax} 顿`
+    } else {
+      reminderText = `下一顿 ${nextItem.timeLabel}，今天最多还能排 ${realisticMax} 顿`
+    }
   } else if (nextItem && nowMinute !== null && nowMinute >= getMinuteInDay(nextItem.time, dayStart)) {
     status = 'due'
     title = '现在可以喂'
@@ -418,6 +452,7 @@ function buildFeedingPlan(records = [], options = {}) {
     amount,
     completedCount,
     remainingCount,
+    realisticMax: isTight ? realisticMax : remainingCount,
     planItems,
     title,
     nextTimeLabel,
@@ -433,6 +468,7 @@ module.exports = {
   DEFAULT_FEEDING_PLAN_CONFIG,
   normalizeFeedingPlanConfig,
   buildFeedingPlan,
+  calcRealisticMax,
   parseClock,
   minutesToClock,
   isInQuietMinute,

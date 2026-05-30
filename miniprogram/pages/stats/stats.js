@@ -67,11 +67,17 @@ Page({
     const end = new Date(start.getTime() + 86400000)
 
     try {
-      const res = await db.getRecordsByDateRange(start, end)
+      const res = await db.getRecordsOverlappingDateRange(start, end, { lookbackDays: 2, limit: 120 })
       const records = res.data || []
-      this._calcFeedingStats(records)
-      this._calcSleepStats(records)
-      this._calcDiaperStats(records)
+      this._calcFeedingStats(records.filter(r => {
+        const t = new Date(r.startTime).getTime()
+        return t >= start.getTime() && t < end.getTime()
+      }))
+      this._calcSleepStats(records, start, end)
+      this._calcDiaperStats(records.filter(r => {
+        const t = new Date(r.startTime).getTime()
+        return t >= start.getTime() && t < end.getTime()
+      }))
     } catch (e) {
       console.error('loadStats error:', e)
     }
@@ -98,7 +104,7 @@ Page({
     for (let i = days - 1; i >= 0; i--) {
       const start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i)
       const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 1)
-      tasks.push(db.getRecordsByDateRange(start, end))
+      tasks.push(db.getRecordsOverlappingDateRange(start, end, { lookbackDays: 2, limit: 120 }))
     }
 
     const results = await Promise.all(tasks)
@@ -136,18 +142,22 @@ Page({
     this.setData({ feedingStats: { count, totalAmount, avgInterval, avgDuration } })
   },
 
-  _calcSleepStats(records) {
-    const sleeps = records.filter(r => r.type === 'sleep' && r.status === 'completed')
+  _calcSleepStats(records, start, end) {
+    const sleeps = records.filter(r => r.type === 'sleep' && r.status === 'completed' && r.endTime)
     let totalMin = 0, napCount = 0, nightMin = 0
     sleeps.forEach(r => {
-      if (r.endTime) {
-        const dur = (new Date(r.endTime) - new Date(r.startTime)) / 60000
-        totalMin += dur
-        if (r.data && r.data.sleepType === 'night') {
-          nightMin += dur
-        } else {
-          napCount++
-        }
+      const rStart = new Date(r.startTime).getTime()
+      const rEnd = new Date(r.endTime).getTime()
+      if (rEnd <= rStart) return
+      if (rStart >= end.getTime() || rEnd <= start.getTime()) return
+      const clippedStart = Math.max(rStart, start.getTime())
+      const clippedEnd = Math.min(rEnd, end.getTime())
+      const dur = (clippedEnd - clippedStart) / 60000
+      totalMin += dur
+      if (r.data && r.data.sleepType === 'night') {
+        nightMin += dur
+      } else {
+        napCount++
       }
     })
     this.setData({
@@ -179,6 +189,7 @@ Page({
       days.push(d)
     }
 
+    const allSleeps = records.filter(r => r.type === 'sleep' && r.status === 'completed' && r.endTime)
     const weekFeeding = []
     const weekSleep = []
     const weekDiaper = []
@@ -195,9 +206,13 @@ Page({
       const totalMl = feedings.reduce((s, r) => s + ((r.data && r.data.amount) || 0), 0)
       weekFeeding.push({ value: totalMl, label: `${day.getMonth() + 1}/${day.getDate()}` })
 
-      const sleeps = dayRecords.filter(r => r.type === 'sleep' && r.status === 'completed' && r.endTime)
       let sleepMin = 0
-      sleeps.forEach(r => { sleepMin += (new Date(r.endTime) - new Date(r.startTime)) / 60000 })
+      allSleeps.forEach(r => {
+        const rStart = new Date(r.startTime).getTime()
+        const rEnd = new Date(r.endTime).getTime()
+        if (rEnd <= rStart || rStart >= dayEnd || rEnd <= dayStart) return
+        sleepMin += (Math.min(rEnd, dayEnd) - Math.max(rStart, dayStart)) / 60000
+      })
       const sleepH = parseFloat((sleepMin / 60).toFixed(1))
       weekSleep.push({ value: sleepH, label: `${day.getMonth() + 1}/${day.getDate()}` })
 

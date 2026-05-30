@@ -170,8 +170,28 @@ Page({
       const d = this.data.currentDate || new Date()
       const start = new Date(d.getFullYear(), d.getMonth(), d.getDate())
       const end = new Date(start.getTime() + 86400000)
-      const res = await db.getRecordsOverlappingDateRange(start, end, { lookbackDays: 2, limit: 120 })
-      const records = res.data || []
+      const prevStart = new Date(start.getTime() - 86400000)
+
+      const [res, prevRes] = await Promise.all([
+        db.getRecordsOverlappingDateRange(start, end, { lookbackDays: 2, limit: 120 }),
+        db.getRecordsOverlappingDateRange(prevStart, start, { lookbackDays: 2, limit: 120 })
+      ])
+
+      const seen = {}
+      const merged = []
+      ;(res.data || []).concat(prevRes.data || []).forEach(r => {
+        const id = r._id || `${r.type}_${r.startTime}_${r.endTime || ''}`
+        if (seen[id]) return
+        seen[id] = true
+        merged.push(r)
+      })
+      const records = merged.filter(r => this._recordOverlapsRange(r, start, end))
+
+      console.log('[loadDayData] 查看日期:', start.toLocaleDateString(), '主查询:', (res.data || []).length, '补充查询:', (prevRes.data || []).length, '合并后:', merged.length, '过滤后:', records.length)
+      if (merged.length !== records.length) {
+        const dropped = merged.filter(r => !this._recordOverlapsRange(r, start, end))
+        console.log('[loadDayData] 被过滤掉的记录:', dropped.map(r => ({ id: r._id, type: r.type, startTime: r.startTime && new Date(r.startTime).toLocaleString() })))
+      }
 
       const stats = this._calcStats(records, start, end)
       const timeline = this._formatTimeline(records, start, end)

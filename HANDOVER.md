@@ -4,56 +4,71 @@
 
 - **项目位置**：`C:\Users\hzgujie\baby-feeding-tracker\`
 - **当前版本**：v0.8-dev
-- **状态**：核心功能完成 + 每日待办 P0 完成 + 独立记录时间轴 + 首页交互优化 + 配置/待办云端化 + 生长精确百分位 + 密钥外部化
+- **状态**：核心功能完成 + 每日待办 P0 完成 + 独立记录时间轴 + 首页交互优化 + 配置/待办云端化 + 生长精确百分位 + 密钥外部化 + 喂奶计划紧张预警 + 跨天睡眠统计修复 + 云查询三路兜底
 
 ---
 
-## 2026-05-29 换 Agent 交接重点
+## 2026-05-30 换 Agent 交接重点
 
 ### 当前工作状态
 - 当前目录 `C:\Users\hzgujie\baby-feeding-tracker\` 不是 Git 仓库，不要使用 `git reset` / `git checkout --` 之类命令回滚文件。
-- 今天主要完成的是「每日待办 P0」、首页体验优化、P1 独立记录时间轴和喂奶计划 P0；`HANDOVER.md` 与 `PRD_喂养记录功能文档.md` 已在本轮更新到 2026-05-29 状态。
-- 用户已经创建或准备创建云数据库 `todos` 集合。集合创建后，打开「待办」页会触发本地 `local_todos` 到云端 `todos` 的自动迁移。
-- 最近一次收尾改动：底部 tab 收敛为「首页/待办/更多/我的」；「更多」包含记录时间轴、数据统计、生长曲线；设置页奶量合并为一个「每顿奶量」；修复 `wx.showActionSheet` 选项过多导致「每顿奶量」点不开的问题。
+- 今天主要完成了三个改动：喂奶计划时间紧张预警优化、跨天睡眠统计不一致修复、云数据库查询缺失兜底。
+- 首页 `index.js` 的 `_updateFeedingPlan` 中有一行测试代码 `now: new Date('2026-05-30T21:00:00')` 用于测试喂奶计划紧张状态，用户可能已改回也可能未改回，**接手后请确认该行已恢复为 `now: new Date()`**。
+- 云数据库 `records` 集合已添加 `startTime` 字段的降序索引，保留即可。
 
-### 今天需求完成情况
-- ✅ 每日待办 P0：新增底部 tab「待办」、待办列表页、独立编辑页。
-- ✅ 待办大类：健康类已支持。
-- ✅ 健康待办类型：量体温、身高体重、吃药、疫苗、自定义健康事项。
-- ✅ 时间配置：支持具体时间到分钟、每日、连续多天、指定日期、每 N 天一次。
-- ✅ 轮流吃药第一版：通过“每 N 天一次”实现。例如药 A 从今天开始每 2 天，药 B 从明天开始每 2 天。
-- ✅ 待办完成：自动生成正式 `records` 记录，包含 `source: 'todo'`、`todoId`、`todoDate`。
-- ✅ 待办撤销完成：误点完成后可点“撤销”，会删除当天由该待办生成的正式记录并恢复未完成；规则已删除的归档完成记录只能删除保留记录，不能恢复规则。
-- ✅ 删除待办规则不删除已完成记录；当天已完成但规则已删除的记录会在待办页回填并提示“规则已删除，记录已保留”。
-- ✅ 待办配置落库到 `todos` 集合；云不可用时本地降级，云恢复后支持迁移。
-- ✅ 待办页 UI：完成项排到下面；顶部日期居中；加号按钮可拖动。
-- ✅ 用药剂量单位：普通记录、健康页、待办编辑、首页健康编辑均支持 `瓶` 和 `g`。
-- ✅ 首页优化：进行中喂奶时“距上次喂奶”改从本次喂奶开始时间计算；顶部新增宝宝名字、月龄/天数并随日期筛选变化；成功提示改为更明显的顶部绿色浮层。
-- ✅ 首页快捷按钮：开始喂奶/开始睡觉按钮更明显，文字更短，图标更大。
-- ✅ P1 独立记录时间轴：新增底部 tab「记录」和 `pages/timeline`，默认显示最新日期+前一天两天连续时间轴；顶部选日期会以该日期为最新日并带出前一天；下拉或滑到底部可继续接上更早日期；多日图表合并为一张连续卡片，日期标记浮在左侧时间轴内不单独占行；喂奶/睡眠/洗澡等有跨度记录占约 3/4 宽度按时间段展示，界面不显示具体起止时间；跨天记录按当天可见区间裁剪显示；点状记录只显示图标、不显示时间/文字，密集时轻微错开；卡片内用药只显示药名，其他只显示操作名；点击卡片/图标弹出只读详情，不提供编辑操作。
-- ✅ 记录时间轴默认连续展示时会按当天记录范围自动裁掉无记录空白，避免今天整段空轴把昨天顶到很下面；跨天睡眠详情显示完整起止日期时间。
-- ✅ 记录时间轴默认两天/下拉加载现在按每个可见日期分别查询重叠记录后合并去重，避免一次大范围查询时昨天记录偶发漏出、但单独切到昨天又能看到的情况。
-- ✅ 底部 tab 已从「首页/待办/记录/统计/我的」收敛为「首页/待办/更多/我的」；「更多」页提供「记录时间轴」「数据统计」「生长曲线」入口，记录/统计/生长页面保留但不再占用底部常用入口。
-- ✅ 数据统计页「最近7天」已改为按每天分别查询后汇总，避免当日统计切到昨天有数据、但 7 天柱状图昨天为空；统计页内的生长曲线入口已移除，只保留在「更多」页。
-- ✅ 喂养配置里的「默认奶量」和「计划每顿奶量」已合并为一个「每顿奶量」；内部会同时写入旧字段 `defaultFeedingAmount` / `feedingPlanAmount` 和新字段 `feedingAmount`，用于快捷记录、语音默认奶量和首页喂奶预估。配置读取/保存也改为读取最新 config，并同步更新云端已有的多份 config 文档，避免读回旧的 100ml。
-- ✅ 「每顿奶量」弹窗修复：`wx.showActionSheet` 的 `itemList` 不要超过 6 项，之前放 8 项会导致点击后不弹窗；现在改成 90/100/110/120/150 + 自定义。这个坑之前也出现过，后续所有 ActionSheet 都要控制选项数。
-- ✅ 喂奶计划 P0：新增纯本地规则 `utils/feeding-plan.js`，默认 7 顿/天、110ml、00:00-06:00 勿扰、最短间隔 2.5 小时；首页显示今日喂奶计划、下一顿、剩余顿数和计划时间点；宝宝睡觉中时改为“醒后提醒”；已喂/开始喂奶后会按剩余窗口重新排后续时间；「我的 > 喂养配置」可配置每日顿数、每顿奶量、夜间勿扰和最短喂奶间隔。
-- ✅ AI 参与边界已预留：`buildFeedingPlan` 支持传入 `aiSuggestion`，只有显式开启 `feedingAiPlanningEnabled` 时才会接受 DeepSeek 建议，并且会继续校验夜间勿扰、最短间隔、当前时间和最大偏移；当前 UI 默认不启用 AI，实际提醒时间仍由本地规则决定。
+### 今天完成的改动
 
-### 今天明确未做 / 待后续实现
-- ⏳ P2 待办到点微信提醒：当前只做了待办列表和完成记录，未接入微信订阅消息、云函数定时器或服务端提醒调度。
-- ⏳ 喂奶计划后台提醒 / DeepSeek 自动预测：当前已做首页内计划与规则校验，尚未接入微信订阅消息、云函数定时提醒或 DeepSeek 自动生成 `aiSuggestion`。
-- ⏳ 早教类待办：用户最初说“可先不做”，本轮未建早教分类/字段/模板。
-- ⏳ tab 正式图标：待办 tab 当前复用健康图标，「更多」tab 当前使用文字省略号样式，如需发布级视觉需补正式图标资源。
-- ⏳ 微信开发者工具完整视觉回归：代码级检查已过，但小程序 UI 仍建议在开发者工具里实际编译查看，尤其是首页快捷按钮、待办页拖动按钮和记录时间轴。
+#### 1. 喂奶计划时间紧张提前预警（feeding-plan.js）
+- **问题**：当剩余顿数在最短间隔约束下排不完时，系统只在最后时刻给出模糊警告”当前规则下可能排不完”。
+- **修复**：
+  - 新增 `calcRealisticMax(fromMinute, config)` 函数，计算从某时间点开始按最短间隔能排几顿。
+  - `buildFeedingPlan` 返回新增 `realisticMax` 字段；当 `futureCount > realisticMax` 时提前触发 `status: 'tight'`。
+  - 警告文案改为可执行建议：”还需 X 顿，23:30前最多能排 Y 顿（间隔Z），建议尽早在 HH:MM 前喂”。
+  - 极端场景（下一顿推入勿扰后当天无法安排）：”还需 X 顿但今天已无法再安排，明天尽量提前开始”。
+  - 未压缩最短间隔（用户明确说宝宝喝不下），只是更早告知和给出建议。
+- **测试**：`feeding-plan.test.js` 从 23 个增加到 42 个用例，全部通过。
+
+#### 2. 跨天睡眠统计不一致修复（stats.js + index.js）
+- **问题**：统计页的7天睡眠柱状图把跨天睡眠的全部时长计入开始日（如前天21:00到昨天06:00，9小时全归前天），而首页按天裁剪（前天3小时、昨天6小时）。两边不一致。
+- **根因**：统计页 `_calcWeekTrend` 按 `startTime` 归天后直接用 `endTime - startTime` 全量计算，没有按天边界裁剪。
+- **修复**：
+  - `stats.js` 的 `loadStats` 改用 `getRecordsOverlappingDateRange` 查询（能抓到跨天记录）。
+  - `_calcSleepStats` 新增 `start`/`end` 参数，按天边界裁剪睡眠时长。
+  - `_calcWeekTrend` 的睡眠部分改为遍历所有睡眠记录，按每天 overlap + clip 分配。
+  - `_loadRecentDayRecords` 改用 `getRecordsOverlappingDateRange`。
+  - 首页 `loadDayData` 新增查询前一天数据并合并，确保跨天记录被稳定捕获。
+
+#### 3. 云数据库查询缺失兜底（db.js）
+- **问题**：补录记录（如昨天凌晨4点）保存成功后，首页切到对应日期看不到记录。数据库里有记录但 `where({ startTime: _.gte(x).and(_.lt(y)) })` 查不到。
+- **根因**：微信云数据库的 startTime 范围+排序复合查询对刚写入的记录不保证即时可见（即使有索引）。原有的 `orderBy('startTime', 'desc')` fallback 走相同索引路径也会漏。
+- **修复**：`getRecordsOverlappingDateRange` 改为三路并行查询：
+  1. 主查询：`where({ startTime: _.gte(x).and(_.lt(y)) }).orderBy('startTime', 'desc')`
+  2. fallback：`orderBy('startTime', 'desc').limit(200)` — 按 startTime 取最新
+  3. **新增**：`orderBy('createdAt', 'desc').limit(200)` — 按写入时间取最新
+  - 三路结果 `mergeRecords` 去重后客户端 `filterRecordsByOverlap` 过滤。
+  - `createdAt` 由 `db.serverDate()` 在写入时生成，写入即可见，不受 startTime 索引延迟影响。
+  - 三路查询 `Promise.all` 并行发出，单路失败不影响其他路。
+- **注意**：`records` 集合已建 `startTime` 降序索引，保留不删；建议也对 `createdAt` 加降序索引以加速第三路查询。
+
+### 首页 loadDayData 诊断日志
+- 当前首页 `loadDayData` 中有 `console.log('[loadDayData] ...')` 诊断日志，用于排查查询问题。如已确认稳定可删除。
 
 ### 最近验证
-- `node --check miniprogram\utils\feeding-plan.js`、`miniprogram\pages\index\index.js`、`miniprogram\pages\mine\mine.js`、`miniprogram\utils\db.js`、`miniprogram\app.js` 通过；之前的时间轴相关 JS 检查也保持通过。
-- `node tests\timeline-layout.test.js` 通过，27/27。
-- `node tests\feeding-plan.test.js` 通过，23/23。
-- `node tests\voice-action-routing.test.js` 通过，37/37。
-- `node tests\growth-standard.test.js` 通过，6/6。
-- `node tests\todo-schedule.test.js` 通过，9/9。
+- `node --check miniprogram\utils\feeding-plan.js` 通过
+- `node --check miniprogram\utils\db.js` 通过
+- `node --check miniprogram\pages\index\index.js` 通过
+- `node --check miniprogram\pages\stats\stats.js` 通过
+- `node tests\feeding-plan.test.js` 通过，42/42
+- `node tests\voice-action-routing.test.js` 通过，37/37
+- `node tests\growth-standard.test.js` 通过，6/6
+- `node tests\todo-schedule.test.js` 通过，9/9
+- `node tests\timeline-layout.test.js` 通过，27/27
+
+### 今天明确未做 / 待后续清理
+- ⏳ 首页 `loadDayData` 的 console.log 诊断代码待稳定后删除
+- ⏳ 云数据库 `records` 集合建议追加 `createdAt` 降序索引（当前无索引也能工作，加了更快）
+- ⏳ 清理各处调试日志（首页 `[loadDayData]` console.log、以及其他可能残留的测试 log）
+- ⏳ QQ音乐接入
 
 ---
 

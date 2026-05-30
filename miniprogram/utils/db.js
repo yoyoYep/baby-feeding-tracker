@@ -465,36 +465,35 @@ module.exports = {
 
     if (await ensureCloud()) {
       try {
-        const res = await db.collection(COLLECTION.RECORDS)
+        const primaryPromise = db.collection(COLLECTION.RECORDS)
           .where({
             startTime: _.gte(lowerBound).and(_.lt(endDate))
           })
           .orderBy('startTime', 'desc')
           .limit(limit)
           .get()
-        try {
-          const fallback = await db.collection(COLLECTION.RECORDS)
-            .orderBy('startTime', 'desc')
-            .limit(limit)
-            .get()
-          res.data = filterRecordsByOverlap(mergeRecords(res.data || [], fallback.data || []), startDate, endDate, limit)
-        } catch (fallbackErr) {
-          console.warn('云端时间轴补充查询失败，仅使用where结果', fallbackErr)
-          res.data = filterRecordsByOverlap(res.data || [], startDate, endDate, limit)
-        }
-        return res
+        const fallbackPromise = db.collection(COLLECTION.RECORDS)
+          .orderBy('startTime', 'desc')
+          .limit(limit)
+          .get()
+        const recentPromise = db.collection(COLLECTION.RECORDS)
+          .orderBy('createdAt', 'desc')
+          .limit(limit)
+          .get()
+
+        const results = await Promise.all([
+          primaryPromise.catch(() => ({ data: [] })),
+          fallbackPromise.catch(() => ({ data: [] })),
+          recentPromise.catch(() => ({ data: [] }))
+        ])
+
+        const merged = mergeRecords(
+          mergeRecords(results[0].data || [], results[1].data || []),
+          results[2].data || []
+        )
+        return { data: filterRecordsByOverlap(merged, startDate, endDate, limit) }
       } catch (e) {
-        console.warn('云端时间轴查询失败，尝试降级查询', e)
-        try {
-          const res = await db.collection(COLLECTION.RECORDS)
-            .orderBy('startTime', 'desc')
-            .limit(limit)
-            .get()
-          res.data = filterRecordsByOverlap(res.data || [], startDate, endDate, limit)
-          return res
-        } catch (e2) {
-          console.warn('云端时间轴全部查询失败，降级到本地存储', e2)
-        }
+        console.warn('云端时间轴查询失败，降级到本地存储', e)
       }
     }
 
