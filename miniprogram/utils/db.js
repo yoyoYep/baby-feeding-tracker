@@ -1,6 +1,6 @@
 let db = null
 let _ = null
-const { normalizeFeedingPlanConfig } = require('./feeding-plan')
+const { normalizeFeedingPlanConfig, getLogicalDayStart } = require('./feeding-plan')
 
 function getDb() {
   if (!db && getApp().globalData.cloudReady) {
@@ -91,9 +91,14 @@ async function migrateLocalTodosToCloud() {
   return changed
 }
 
-function getTodayRange() {
+function getTodayRange(dayStartHour) {
   const now = new Date()
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  if (dayStartHour == null) {
+    const app = getApp()
+    const config = (app && app.globalData && app.globalData.config) || {}
+    dayStartHour = normalizeFeedingPlanConfig(config).feedingDayStartHour
+  }
+  const start = getLogicalDayStart(now, dayStartHour)
   const end = new Date(start.getTime() + 24 * 60 * 60 * 1000)
   return { start, end }
 }

@@ -41,7 +41,7 @@
   </view>
 
   <view wx:else class="todo-list">
-    <view class="todo-item card {{item.done ? 'is-done' : ''}}" wx:for="{{todos}}" wx:key="_id">
+    <view class="todo-item card {{item.done ? 'is-done' : ''}} {{item.cancelled ? 'is-cancelled' : ''}}" wx:for="{{todos}}" wx:key="_id">
       <view class="todo-time">
         <text>{{item.time}}</text>
       </view>
@@ -56,8 +56,10 @@
         <view wx:if="{{item.snoozeText}}" class="todo-snooze">{{item.snoozeText}}</view>
       </view>
       <view class="todo-actions">
-        <view class="complete-btn {{item.done ? 'done' : ''}} {{item.archived ? 'archived' : ''}}" bindtap="completeTodo" data-id="{{item._id}}">
-          {{item.archived ? '×' : (item.done ? '↶' : '✓')}}
+        <view class="complete-btn {{(item.done || item.cancelled) ? 'done' : ''}} {{item.archived ? 'archived' : ''}}" bindtap="completeTodo" data-id="{{item._id}}">
+          <text wx:if="{{item.archived}}" class="complete-symbol">×</text>
+          <view wx:elif="{{item.done || item.cancelled}}" class="undo-icon"></view>
+          <text wx:else class="complete-symbol">✓</text>
         </view>
         <view class="more-btn" catchtap="onTodoMore" data-id="{{item._id}}">•••</view>
       </view>

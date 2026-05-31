@@ -169,6 +169,10 @@
   border-left-color: #8BC34A;
 }
 
+.todo-item.is-cancelled {
+  border-left-color: #BDBDBD;
+}
+
 .todo-time {
   width: 92rpx;
   flex-shrink: 0;
@@ -228,6 +232,11 @@
   background: #FFEBEE;
 }
 
+.todo-status.cancelled {
+  color: #666;
+  background: #EEEEEE;
+}
+
 .todo-desc {
   margin-top: 8rpx;
   font-size: 26rpx;
@@ -263,13 +272,15 @@
 .complete-btn {
   width: 58rpx;
   height: 58rpx;
-  line-height: 56rpx;
   border-radius: 50%;
   background: #FF9AA2;
   color: #fff;
   font-size: 34rpx;
   font-weight: 600;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 
 .complete-btn.done {
@@ -281,6 +292,19 @@
 .complete-btn.archived {
   background: #f1f1f1;
   color: #aaa;
+}
+
+.complete-symbol {
+  line-height: 1;
+}
+
+.undo-icon {
+  width: 34rpx;
+  height: 34rpx;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2724%27%20height%3D%2724%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%23888888%27%20stroke-width%3D%272.4%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M9%2014%204%209l5-5%27%2F%3E%3Cpath%20d%3D%27M4%209h10.5a5.5%205.5%200%201%201-3.9%209.4%27%2F%3E%3C%2Fsvg%3E");
+  background-size: 34rpx 34rpx;
+  background-repeat: no-repeat;
+  background-position: center;
 }
 
 .more-btn {

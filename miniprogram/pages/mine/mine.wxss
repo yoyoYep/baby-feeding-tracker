@@ -60,6 +60,19 @@
   font-size: 28rpx;
 }
 
+.menu-copy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+
+.menu-sub {
+  font-size: 23rpx;
+  color: #999;
+}
+
 .menu-arrow {
   font-size: 32rpx;
   color: #ccc;

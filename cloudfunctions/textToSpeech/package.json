@@ -1,0 +1,9 @@
+{
+  "name": "textToSpeech",
+  "version": "1.0.0",
+  "description": "AI建议语音播报 - 腾讯云TTS",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

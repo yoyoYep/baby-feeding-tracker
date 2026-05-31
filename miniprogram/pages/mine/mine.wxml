@@ -41,6 +41,18 @@
     </view>
   </view>
 
+  <!-- 提醒设置 -->
+  <view class="card menu-card">
+    <view class="card-title">提醒设置</view>
+    <view class="menu-item">
+      <view class="menu-copy">
+        <text class="menu-text">程序内到点提醒</text>
+        <text class="menu-sub">小程序前台时提醒喂奶和待办</text>
+      </view>
+      <switch checked="{{localReminderEnabled}}" bindchange="toggleLocalReminder" color="#FF9AA2" />
+    </view>
+  </view>
+
   <!-- 功能列表 -->
   <view class="card menu-card">
     <view class="menu-item" bindtap="editBabyInfo">

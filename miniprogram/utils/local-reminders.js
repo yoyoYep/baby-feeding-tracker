@@ -1,6 +1,6 @@
 const db = require('./db')
 const { matchesTodoDate } = require('./todo-schedule')
-const { buildFeedingPlan, normalizeFeedingPlanConfig } = require('./feeding-plan')
+const { buildFeedingPlan, normalizeFeedingPlanConfig, getLogicalDayStart, getLogicalDateStr } = require('./feeding-plan')
 
 const TRIGGERED_KEY = 'local_reminder_triggered'
 const CHECK_INTERVAL_MS = 60 * 1000
@@ -25,6 +25,24 @@ function buildDateTime(dateStr, timeStr) {
   return new Date(parts[0], parts[1] - 1, parts[2], timeParts[0] || 0, timeParts[1] || 0, 0, 0)
 }
 
+function buildLogicalDateTime(dateStr, timeStr, dayStartHour = 0) {
+  const date = buildDateTime(dateStr, timeStr)
+  const hour = date.getHours()
+  if (dayStartHour > 0 && hour < dayStartHour) {
+    date.setDate(date.getDate() + 1)
+  }
+  return date
+}
+
+function getAppSafe() {
+  if (typeof getApp !== 'function') return null
+  try {
+    return getApp() || null
+  } catch (e) {
+    return null
+  }
+}
+
 function getTriggeredState() {
   return wx.getStorageSync(TRIGGERED_KEY) || {}
 }
@@ -40,6 +58,14 @@ function getReminderEntry(dateStr, key) {
 function getTodoReminderKey(todo, dateStr) {
   if (!todo || !todo._id) return ''
   return `todo:${todo._id}:${dateStr}:${todo.time || ''}`
+}
+
+function isTodoCancelled(todo, dateStr) {
+  if (!todo || !dateStr) return false
+  const cancelledDates = todo.cancelledDates
+  if (!cancelledDates) return false
+  if (Array.isArray(cancelledDates)) return cancelledDates.includes(dateStr)
+  return !!cancelledDates[dateStr]
 }
 
 function getFeedingReminderKey(dateStr, nextItem) {
@@ -72,7 +98,8 @@ function updateReminderEntries(dateStr, entries) {
   ;(entries || []).forEach(entry => {
     todayState[entry.key] = entry.value
   })
-  wx.setStorageSync(TRIGGERED_KEY, { [dateStr]: todayState })
+  state[dateStr] = todayState
+  wx.setStorageSync(TRIGGERED_KEY, state)
 }
 
 function notifyReminderStateChanged() {
@@ -152,12 +179,19 @@ function todoReminderText(todo) {
     const dosage = data.dosage ? `${data.dosage}${data.unit || ''}` : ''
     return ['吃药', data.name, dosage].filter(Boolean).join(' ')
   }
+  if (todo.type === 'health_temp') return todo.title || '量体温'
+  if (todo.type === 'health_vaccine') return data.name ? `疫苗 ${data.name}` : (todo.title || '疫苗')
+  if (todo.type === 'growth') return todo.title || '身高体重'
+  if (todo.type === 'health_custom') return (data.title || todo.title || '健康事项')
   return todo.title || '待办事项'
 }
 
-async function checkTodoReminders(now) {
-  const dateStr = formatDateStr(now)
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+async function buildTodoReminder(now) {
+  const app = getAppSafe()
+  const config = normalizeFeedingPlanConfig((app && app.globalData && app.globalData.config) || {})
+  const dayStartHour = config.feedingDayStartHour
+  const dateStr = getLogicalDateStr(now, dayStartHour)
+  const start = getLogicalDayStart(now, dayStartHour)
   const end = new Date(start.getTime() + 86400000)
   const [todoRes, recordRes] = await Promise.all([
     db.getTodos(),
@@ -166,23 +200,32 @@ async function checkTodoReminders(now) {
 
   const completedMap = {}
   ;(recordRes.data || []).forEach(record => {
-    if (record.todoId && record.todoDate === dateStr) completedMap[record.todoId] = true
+    if (record.todoId && record.todoDate === dateStr && record.status === 'completed') completedMap[record.todoId] = true
   })
 
   const dueItems = []
   ;(todoRes.data || []).forEach(todo => {
     if (!todo || todo.enabled === false || !matchesTodoDate(todo, dateStr)) return
+    if (isTodoCancelled(todo, dateStr)) return
     if (completedMap[todo._id]) return
-    const scheduledAt = buildDateTime(dateStr, todo.time)
+    const scheduledAt = buildLogicalDateTime(dateStr, todo.time, dayStartHour)
     const key = getTodoReminderKey(todo, dateStr)
     if (!isDueNow(scheduledAt, now) || shouldSkipReminder(dateStr, key, now)) return
-    dueItems.push({ key, text: todoReminderText(todo) })
+    dueItems.push({ key, time: todo.time || '', text: todoReminderText(todo) })
   })
 
-  if (!dueItems.length) return
-  const lines = dueItems.slice(0, 4).map(item => `- ${item.text}`)
+  if (!dueItems.length) return null
+  const lines = dueItems.slice(0, 4).map(item => `- ${item.time ? item.time + ' ' : ''}${item.text}`)
   const rest = dueItems.length > 4 ? `\n还有 ${dueItems.length - 4} 项待办` : ''
-  showLocalReminder('待办到点提醒', `${lines.join('\n')}${rest}`, dateStr, dueItems.map(item => item.key))
+  const content = `${lines.join('\n')}${rest}`
+  return {
+    title: '待办到点提醒',
+    sectionTitle: '待办事项',
+    content,
+    sectionContent: `待办事项\n${content}`,
+    dateStr,
+    keys: dueItems.map(item => item.key)
+  }
 }
 
 function mergeRecords(primary = [], fallback = []) {
@@ -198,45 +241,85 @@ function mergeRecords(primary = [], fallback = []) {
   return merged
 }
 
-async function checkFeedingReminder(now) {
-  const app = getApp()
-  const dateStr = formatDateStr(now)
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+async function buildFeedingReminder(now) {
+  const app = getAppSafe()
+  const baseConfig = (app && app.globalData && app.globalData.config) || await db.getConfig()
+  const config = normalizeFeedingPlanConfig(baseConfig)
+  if (app && app.globalData) app.globalData.config = config
+  const dayStartHour = config.feedingDayStartHour
+  const dateStr = getLogicalDateStr(now, dayStartHour)
+  const start = getLogicalDayStart(now, dayStartHour)
   const end = new Date(start.getTime() + 86400000)
   const [recordRes, ongoingRes] = await Promise.all([
     db.getRecordsOverlappingDateRange(start, end, { lookbackDays: 2, limit: 120 }),
     db.getOngoingRecords()
   ])
-  const baseConfig = app.globalData.config || await db.getConfig()
-  const config = normalizeFeedingPlanConfig(baseConfig)
-  app.globalData.config = config
   const records = mergeRecords(recordRes.data || [], ongoingRes.data || [])
   const plan = buildFeedingPlan(records, { config, date: now, now })
   const nextItem = plan && plan.planItems && plan.planItems.find(item => item.state === 'next')
-  if (!nextItem || !nextItem.time) return
+  if (!nextItem || !nextItem.time) return null
 
   const scheduledAt = new Date(nextItem.time)
   const key = getFeedingReminderKey(dateStr, nextItem)
-  if (!isDueNow(scheduledAt, now) || shouldSkipReminder(dateStr, key, now)) return
+  if (!isDueNow(scheduledAt, now) || shouldSkipReminder(dateStr, key, now)) return null
 
   const amount = plan.amount ? `${plan.amount}ml` : ''
   const content = [`计划 ${nextItem.timeLabel} 喂奶`, amount ? `建议奶量 ${amount}` : '', '可以现在记录或开始喂奶。']
     .filter(Boolean)
     .join('\n')
-  showLocalReminder('喂奶到点提醒', content, dateStr, [key])
+  return {
+    title: '喂奶到点提醒',
+    sectionTitle: '喂奶计划',
+    content,
+    sectionContent: `喂奶计划\n${content}`,
+    dateStr,
+    keys: [key]
+  }
+}
+
+function mergeDueReminders(reminders) {
+  const due = (reminders || []).filter(Boolean)
+  if (!due.length) return null
+  if (due.length === 1) return due[0]
+
+  const keys = []
+  due.forEach(reminder => {
+    ;(reminder.keys || []).forEach(key => keys.push(key))
+  })
+
+  return {
+    title: '照护到点提醒',
+    content: due.map(reminder => reminder.sectionContent || reminder.content).filter(Boolean).join('\n\n'),
+    dateStr: due[0].dateStr,
+    keys
+  }
 }
 
 async function checkForegroundReminders() {
   if (checking) return
   checking = true
   try {
-    const app = getApp()
+    const app = getAppSafe()
+    if (!app || !app.globalData) return
     if (app.globalData.cloudReadyPromise) {
       await app.globalData.cloudReadyPromise
     }
+    const config = normalizeFeedingPlanConfig((app && app.globalData && app.globalData.config) || {})
+    if (config.localReminderEnabled !== true) return
     const now = new Date()
-    await checkTodoReminders(now)
-    await checkFeedingReminder(now)
+    const reminders = await Promise.all([
+      buildFeedingReminder(now),
+      buildTodoReminder(now)
+    ])
+    const mergedReminder = mergeDueReminders(reminders)
+    if (mergedReminder) {
+      showLocalReminder(
+        mergedReminder.title,
+        mergedReminder.content,
+        mergedReminder.dateStr,
+        mergedReminder.keys
+      )
+    }
   } catch (e) {
     console.warn('本地提醒检查失败', e)
   } finally {
@@ -262,5 +345,8 @@ module.exports = {
   checkForegroundReminders,
   getTodoReminderKey,
   getFeedingReminderKey,
-  getSnoozeCountdownText
+  getSnoozeCountdownText,
+  buildLogicalDateTime,
+  formatTodoReminderText: todoReminderText,
+  isTodoCancelled
 }

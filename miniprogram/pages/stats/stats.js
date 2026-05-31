@@ -1,4 +1,5 @@
 const db = require('../../utils/db')
+const { normalizeFeedingPlanConfig, getLogicalDayStart, isSameLogicalDay } = require('../../utils/feeding-plan')
 
 Page({
   data: {
@@ -49,7 +50,9 @@ Page({
   nextDay() {
     const d = new Date(this.data.currentDate)
     const today = new Date()
-    if (d.toDateString() === today.toDateString()) return
+    const app = getApp()
+    const config = normalizeFeedingPlanConfig((app && app.globalData && app.globalData.config) || {})
+    if (isSameLogicalDay(d, today, config.feedingDayStartHour)) return
     d.setDate(d.getDate() + 1)
     this.setData({ currentDate: d, dateText: this._getDateText(d) })
     this.loadStats()
@@ -63,7 +66,8 @@ Page({
     }
 
     const d = this.data.currentDate || new Date()
-    const start = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+    const config = normalizeFeedingPlanConfig((app.globalData && app.globalData.config) || {})
+    const start = getLogicalDayStart(d, config.feedingDayStartHour)
     const end = new Date(start.getTime() + 86400000)
 
     try {
@@ -100,10 +104,14 @@ Page({
 
   async _loadRecentDayRecords(days) {
     const today = new Date()
+    const app = getApp()
+    const config = normalizeFeedingPlanConfig((app && app.globalData && app.globalData.config) || {})
+    const dayStartHour = config.feedingDayStartHour
     const tasks = []
     for (let i = days - 1; i >= 0; i--) {
-      const start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i)
-      const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 1)
+      const ref = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i, dayStartHour)
+      const start = getLogicalDayStart(ref, dayStartHour)
+      const end = new Date(start.getTime() + 86400000)
       tasks.push(db.getRecordsOverlappingDateRange(start, end, { lookbackDays: 2, limit: 120 }))
     }
 
@@ -184,9 +192,12 @@ Page({
   _calcWeekTrend(records) {
     const days = []
     const now = new Date()
+    const app = getApp()
+    const config = normalizeFeedingPlanConfig((app && app.globalData && app.globalData.config) || {})
+    const dayStartHour = config.feedingDayStartHour
     for (let i = 6; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
-      days.push(d)
+      const ref = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i, dayStartHour)
+      days.push(getLogicalDayStart(ref, dayStartHour))
     }
 
     const allSleeps = records.filter(r => r.type === 'sleep' && r.status === 'completed' && r.endTime)
@@ -233,9 +244,13 @@ Page({
 
   _getDateText(d) {
     const today = new Date()
-    if (d.toDateString() === today.toDateString()) return '今天'
+    const app = getApp()
+    const config = normalizeFeedingPlanConfig((app && app.globalData && app.globalData.config) || {})
+    const dayStartHour = config.feedingDayStartHour
+    if (isSameLogicalDay(d, today, dayStartHour)) return '今天'
     const yesterday = new Date(today.getTime() - 86400000)
-    if (d.toDateString() === yesterday.toDateString()) return '昨天'
-    return `${d.getMonth() + 1}月${d.getDate()}日`
+    if (isSameLogicalDay(d, yesterday, dayStartHour)) return '昨天'
+    const ds = getLogicalDayStart(d, dayStartHour)
+    return `${ds.getMonth() + 1}月${ds.getDate()}日`
   }
 })

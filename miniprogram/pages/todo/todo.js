@@ -1,6 +1,7 @@
 const db = require('../../utils/db')
 const { matchesTodoDate, getTodoScheduleText } = require('../../utils/todo-schedule')
-const { getTodoReminderKey, getSnoozeCountdownText } = require('../../utils/local-reminders')
+const { getTodoReminderKey, getSnoozeCountdownText, buildLogicalDateTime, isTodoCancelled } = require('../../utils/local-reminders')
+const { normalizeFeedingPlanConfig, getLogicalDayStart, getLogicalDateStr, isSameLogicalDay } = require('../../utils/feeding-plan')
 
 const TYPE_META = {
   health_temp: { label: '量体温', icon: '🌡️' },
@@ -88,17 +89,20 @@ Page({
     this.setData({ loading: true })
     try {
       const d = this.data.currentDate || new Date()
-      const start = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+      const app = getApp()
+      const config = normalizeFeedingPlanConfig((app && app.globalData && app.globalData.config) || {})
+      const dayStartHour = config.feedingDayStartHour
+      const start = getLogicalDayStart(d, dayStartHour)
       const end = new Date(start.getTime() + 86400000)
       const [todoRes, recordRes] = await Promise.all([
         db.getTodos(),
         db.getRecordsByDateRange(start, end)
       ])
-      const dateStr = this._formatDateStr(start)
+      const dateStr = getLogicalDateStr(d, dayStartHour)
       const records = recordRes.data || []
       const completedMap = {}
       records.forEach(r => {
-        if (r.todoId && r.todoDate === dateStr) {
+        if (r.todoId && r.todoDate === dateStr && r.status === 'completed') {
           completedMap[r.todoId] = r
         }
       })
@@ -137,9 +141,10 @@ Page({
     const meta = TYPE_META[todo.type] || TYPE_META.health_custom
     const scheduledAt = this._buildScheduledTime(dateStr, todo.time)
     const done = !!doneRecord
-    const overdue = !done && scheduledAt.getTime() < Date.now()
+    const cancelled = !done && isTodoCancelled(todo, dateStr)
+    const overdue = !done && !cancelled && scheduledAt.getTime() < Date.now()
     const reminderKey = getTodoReminderKey(todo, dateStr)
-    const snoozeText = !done ? getSnoozeCountdownText(dateStr, reminderKey) : ''
+    const snoozeText = !done && !cancelled ? getSnoozeCountdownText(dateStr, reminderKey) : ''
     const data = todo.data || {}
     const descParts = []
     let title = todo.title || meta.label
@@ -169,9 +174,10 @@ Page({
       title,
       desc,
       done,
+      cancelled,
       overdue,
-      statusText: done ? '已完成' : (overdue ? '已过期' : '未完成'),
-      statusClass: done ? 'done' : (overdue ? 'overdue' : 'pending'),
+      statusText: done ? '已完成' : (cancelled ? '已取消' : (overdue ? '已过期' : '未完成')),
+      statusClass: done ? 'done' : (cancelled ? 'cancelled' : (overdue ? 'overdue' : 'pending')),
       recordId: doneRecord && doneRecord._id || '',
       scheduleText: this._getScheduleText(todo),
       snoozeText
@@ -204,7 +210,7 @@ Page({
     let changed = false
     const updated = todos.map(todo => {
       const reminderKey = getTodoReminderKey(todo, dateStr)
-      const snoozeText = !todo.done && !todo.archived ? getSnoozeCountdownText(dateStr, reminderKey, now) : ''
+      const snoozeText = !todo.done && !todo.cancelled && !todo.archived ? getSnoozeCountdownText(dateStr, reminderKey, now) : ''
       if ((todo.snoozeText || '') === snoozeText) return todo
       changed = true
       return { ...todo, snoozeText }
@@ -215,6 +221,10 @@ Page({
   },
 
   _sortTodos(a, b) {
+    const aClosed = !!(a.done || a.cancelled)
+    const bClosed = !!(b.done || b.cancelled)
+    if (aClosed !== bClosed) return aClosed ? 1 : -1
+    if (!!a.cancelled !== !!b.cancelled) return a.cancelled ? 1 : -1
     if (!!a.done !== !!b.done) return a.done ? 1 : -1
     return (a.time || '').localeCompare(b.time || '')
   },
@@ -274,9 +284,9 @@ Page({
   },
 
   _buildScheduledTime(dateStr, timeStr) {
-    const [y, mo, d] = dateStr.split('-').map(n => parseInt(n, 10))
-    const [h, mi] = (timeStr || '09:00').split(':').map(n => parseInt(n, 10))
-    return new Date(y, mo - 1, d, h || 0, mi || 0, 0, 0)
+    const app = getApp()
+    const config = normalizeFeedingPlanConfig((app && app.globalData && app.globalData.config) || {})
+    return buildLogicalDateTime(dateStr, timeStr, config.feedingDayStartHour)
   },
 
   _showSuccessNotice(title = '已完成') {
@@ -291,23 +301,32 @@ Page({
   },
 
   _formatDateStr(date) {
-    return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`
+    const app = getApp()
+    const config = normalizeFeedingPlanConfig((app && app.globalData && app.globalData.config) || {})
+    return getLogicalDateStr(date, config.feedingDayStartHour)
   },
 
   _updateDateLabel(date) {
     const today = new Date()
-    const base = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()
-    const current = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()
-    const diff = Math.round((current - base) / 86400000)
-    let label = `${date.getMonth() + 1}月${date.getDate()}日`
-    if (diff === 0) label = '今天'
-    else if (diff === -1) label = '昨天'
-    else if (diff === 1) label = '明天'
+    const app = getApp()
+    const config = normalizeFeedingPlanConfig((app && app.globalData && app.globalData.config) || {})
+    const dayStartHour = config.feedingDayStartHour
+    let label = ''
+    if (isSameLogicalDay(date, today, dayStartHour)) {
+      label = '今天'
+    } else if (isSameLogicalDay(date, new Date(today.getTime() - 86400000), dayStartHour)) {
+      label = '昨天'
+    } else if (isSameLogicalDay(date, new Date(today.getTime() + 86400000), dayStartHour)) {
+      label = '明天'
+    } else {
+      const ds = getLogicalDayStart(date, dayStartHour)
+      label = `${ds.getMonth() + 1}月${ds.getDate()}日`
+    }
     this.setData({
       currentDate: date,
-      dateStr: this._formatDateStr(date),
+      dateStr: getLogicalDateStr(date, dayStartHour),
       dateLabel: label,
-      isToday: diff === 0
+      isToday: isSameLogicalDay(date, today, dayStartHour)
     })
   },
 
@@ -395,7 +414,9 @@ Page({
       })
       return
     }
-    const itemList = item && item.done ? ['编辑', '撤销完成', '删除'] : ['编辑', '删除']
+    const itemList = item && item.done
+      ? ['编辑', '撤销完成', '删除']
+      : (item && item.cancelled ? ['编辑', '恢复今天', '删除'] : ['编辑', '取消今天', '删除'])
     wx.showActionSheet({
       itemList,
       success: res => {
@@ -403,6 +424,10 @@ Page({
           wx.navigateTo({ url: `/pages/todo-edit/todo-edit?id=${id}` })
         } else if (item && item.done && res.tapIndex === 1) {
           this._confirmUndoComplete(item)
+        } else if (item && item.cancelled && res.tapIndex === 1) {
+          this._restoreCancelledTodo(item)
+        } else if (item && !item.done && !item.cancelled && res.tapIndex === 1) {
+          this._confirmCancelTodo(item)
         } else {
           this._confirmDelete(id)
         }
@@ -458,6 +483,10 @@ Page({
       this._confirmUndoComplete(todo)
       return
     }
+    if (todo.cancelled) {
+      this._restoreCancelledTodo(todo)
+      return
+    }
     if (todo.type === 'health_temp') {
       this._completeTemp(todo)
       return
@@ -469,6 +498,49 @@ Page({
       return
     }
     this._completeDirect(todo)
+  },
+
+  cancelTodo(e) {
+    const id = e.currentTarget.dataset.id
+    const todo = this.data.todos.find(t => t._id === id)
+    if (!todo || todo.done || todo.cancelled || todo.archived) return
+    this._confirmCancelTodo(todo)
+  },
+
+  _confirmCancelTodo(todo) {
+    wx.showModal({
+      title: '取消今日待办',
+      content: '只取消今天这一次，不删除重复规则，也不会生成健康记录。',
+      cancelText: '保留',
+      confirmText: '取消这次',
+      confirmColor: '#F44336',
+      success: async res => {
+        if (!res.confirm) return
+        await this._setTodoCancelled(todo, true)
+      }
+    })
+  },
+
+  async _restoreCancelledTodo(todo) {
+    await this._setTodoCancelled(todo, false)
+  },
+
+  async _setTodoCancelled(todo, cancelled) {
+    try {
+      const cancelledDates = { ...(todo.cancelledDates || {}) }
+      if (cancelled) {
+        cancelledDates[this.data.dateStr] = { at: Date.now() }
+      } else {
+        delete cancelledDates[this.data.dateStr]
+      }
+      await db.updateTodo(todo._id, { cancelledDates })
+      wx.removeStorageSync('ai_assistant_cache')
+      this._showSuccessNotice(cancelled ? '已取消' : '已恢复')
+      await this.loadTodos()
+    } catch (e) {
+      console.error('更新待办取消状态失败:', e)
+      wx.showToast({ title: cancelled ? '取消失败' : '恢复失败', icon: 'none' })
+    }
   },
 
   _confirmUndoComplete(todo) {

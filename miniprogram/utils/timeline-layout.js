@@ -1,4 +1,5 @@
 const { getPercentile } = require('./growth-standard')
+const { getLogicalDayStart, isSameLogicalDay, normalizeFeedingPlanConfig } = require('./feeding-plan')
 
 const HOUR_HEIGHT_RPX = 96
 const DAY_MINUTES = 24 * 60
@@ -132,13 +133,12 @@ function formatDateStr(date) {
   return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`
 }
 
-function getDateLabel(date, now = new Date()) {
-  const target = startOfDay(date)
-  const today = startOfDay(now)
-  const yesterday = addDays(today, -1)
-  if (target.toDateString() === today.toDateString()) return '今天'
-  if (target.toDateString() === yesterday.toDateString()) return '昨天'
-  return `${target.getMonth() + 1}月${target.getDate()}日`
+function getDateLabel(date, now = new Date(), dayStartHour = 0) {
+  if (isSameLogicalDay(date, now, dayStartHour)) return '今天'
+  const yesterday = new Date(now.getTime() - 86400000)
+  if (isSameLogicalDay(date, yesterday, dayStartHour)) return '昨天'
+  const ds = getLogicalDayStart(date, dayStartHour)
+  return `${ds.getMonth() + 1}月${ds.getDate()}日`
 }
 
 function normalizeVisibleEndMinute(visibleEndMinute) {
@@ -153,11 +153,11 @@ function normalizeVisibleStartMinute(visibleStartMinute, visibleEndMinute) {
 }
 
 function getVisibleEndMinuteForDay(dayStart, now = new Date()) {
-  if (dayStart.toDateString() !== startOfDay(now).toDateString()) {
+  if (now.getTime() < dayStart.getTime() || now.getTime() >= dayStart.getTime() + 86400000) {
     return DAY_MINUTES
   }
 
-  const minutes = now.getHours() * 60 + now.getMinutes()
+  const minutes = Math.floor((now.getTime() - dayStart.getTime()) / 60000)
   const roundedHour = Math.min(24, Math.max(2, Math.ceil(minutes / 120) * 2))
   return roundedHour * 60
 }
@@ -191,7 +191,7 @@ function getAutoVisibleRange(records, dayStart, dayEnd, now, defaultEndMinute) {
     .map(record => getRecordMinuteExtent(record, dayStart, dayEnd, now))
     .filter(Boolean)
 
-  const isToday = dayStart.toDateString() === startOfDay(now).toDateString()
+  const isToday = now.getTime() >= dayStart.getTime() && now.getTime() < dayEnd.getTime()
   if (isToday) {
     const nowMinute = minutesFromDayStart(now, dayStart)
     extents.push({ startMinute: nowMinute, endMinute: nowMinute })
@@ -420,12 +420,14 @@ function buildHourMarks(visibleEndMinute = DAY_MINUTES, options = {}) {
   const firstHour = endHour % 2 === 0 ? endHour : endHour + 1
   const visibleStartMinute = normalizeVisibleStartMinute(options.visibleStartMinute, visibleEndMinute)
   const startHour = Math.max(0, Math.floor(visibleStartMinute / 60))
+  const dayStartHour = options.dayStartHour || 0
 
   for (let hour = Math.min(24, firstHour); hour >= startHour; hour -= 2) {
     if (options.hideTopBoundary && hour === Math.min(24, firstHour)) continue
+    const clockHour = (hour + dayStartHour) % 24
     marks.push({
       hour,
-      label: `${hour.toString().padStart(2, '0')}:00`,
+      label: `${clockHour.toString().padStart(2, '0')}:00`,
       topRpx: minuteToTopRpx(hour * 60, visibleEndMinute, visibleStartMinute)
     })
   }
@@ -516,7 +518,7 @@ function buildTimelineLayout(records, options = {}) {
     dayHeightRpx: contentHeightRpx,
     visibleStartMinute,
     visibleEndMinute,
-    hourMarks: buildHourMarks(visibleEndMinute, { hideTopBoundary: true, visibleStartMinute }),
+    hourMarks: buildHourMarks(visibleEndMinute, { hideTopBoundary: true, visibleStartMinute, dayStartHour: options.dayStartHour || 0 }),
     durationItems,
     pointItems,
     recordCount: durationItems.length + pointItems.length
@@ -528,12 +530,13 @@ function buildTimelineDaySections(records, options = {}) {
   const latestDate = options.latestDate ? new Date(options.latestDate) : now
   const days = Math.max(1, options.days || 2)
   const babyInfo = options.babyInfo || null
-  const latestDayStart = startOfDay(latestDate)
+  const dayStartHour = options.dayStartHour || 0
+  const latestDayStart = getLogicalDayStart(latestDate, dayStartHour)
   const sections = []
 
   for (let i = 0; i < days; i++) {
-    const dayStart = addDays(latestDayStart, -i)
-    const dayEnd = addDays(dayStart, 1)
+    const dayStart = new Date(latestDayStart.getTime() - i * 86400000)
+    const dayEnd = new Date(dayStart.getTime() + 86400000)
     let visibleEndMinute = getVisibleEndMinuteForDay(dayStart, now)
     let visibleStartMinute = 0
     if (options.autoCrop !== false) {
@@ -548,14 +551,15 @@ function buildTimelineDaySections(records, options = {}) {
       babyInfo,
       visibleEndMinute,
       visibleStartMinute,
-      hideTopBoundary: i > 0
+      hideTopBoundary: i > 0,
+      dayStartHour
     })
 
     sections.push({
       ...layout,
       date: dayStart,
       dateStr: formatDateStr(dayStart),
-      dateLabel: getDateLabel(dayStart, now),
+      dateLabel: getDateLabel(dayStart, now, dayStartHour),
       showNowMarker: now.getTime() >= dayStart.getTime() && now.getTime() < dayEnd.getTime(),
       nowTopRpx: now.getTime() >= dayStart.getTime() && now.getTime() < dayEnd.getTime()
         ? minuteToTopRpx(minutesFromDayStart(now, dayStart), visibleEndMinute, visibleStartMinute)

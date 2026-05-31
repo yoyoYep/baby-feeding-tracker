@@ -1,4 +1,5 @@
 const db = require('../../utils/db')
+const { normalizeFeedingPlanConfig, getLogicalDayStart, isSameLogicalDay } = require('../../utils/feeding-plan')
 
 Page({
   data: {
@@ -176,7 +177,9 @@ Page({
       const wxDb = wx.cloud.database()
       const _ = wxDb.command
       const now = new Date()
-      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      const app = getApp()
+      const config = normalizeFeedingPlanConfig((app && app.globalData && app.globalData.config) || {})
+      const todayStart = getLogicalDayStart(now, config.feedingDayStartHour)
 
       const res = await wxDb.collection('records')
         .where({
@@ -229,11 +232,13 @@ Page({
 
   _formatDateTime(date) {
     const today = new Date()
-    const isToday = date.toDateString() === today.toDateString()
+    const app = getApp()
+    const config = normalizeFeedingPlanConfig((app && app.globalData && app.globalData.config) || {})
+    const dayStartHour = config.feedingDayStartHour
     const timeStr = this._formatTime(date)
-    if (isToday) return `今天 ${timeStr}`
+    if (isSameLogicalDay(date, today, dayStartHour)) return `今天 ${timeStr}`
     const yesterday = new Date(today.getTime() - 86400000)
-    if (date.toDateString() === yesterday.toDateString()) return `昨天 ${timeStr}`
+    if (isSameLogicalDay(date, yesterday, dayStartHour)) return `昨天 ${timeStr}`
     return `${date.getMonth() + 1}/${date.getDate()} ${timeStr}`
   }
 })

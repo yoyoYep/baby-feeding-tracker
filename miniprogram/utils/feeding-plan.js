@@ -11,7 +11,9 @@ const DEFAULT_FEEDING_PLAN_CONFIG = {
   feedingIdealInterval: 180,
   feedingWakeBuffer: 10,
   feedingAiPlanningEnabled: false,
-  feedingAiMaxShift: 30
+  feedingAiMaxShift: 30,
+  feedingDayStartHour: 4,
+  localReminderEnabled: false
 }
 
 function toNumber(value, fallback) {
@@ -22,6 +24,12 @@ function toNumber(value, fallback) {
 function normalizeClock(value, fallback) {
   const parsed = parseClock(value)
   return parsed === null ? fallback : minutesToClock(parsed)
+}
+
+function normalizeDayStartHour(value) {
+  const n = parseInt(value, 10)
+  if (!Number.isFinite(n) || n < 0 || n > 12) return DEFAULT_FEEDING_PLAN_CONFIG.feedingDayStartHour
+  return n
 }
 
 function normalizeFeedingPlanConfig(config = {}) {
@@ -49,7 +57,9 @@ function normalizeFeedingPlanConfig(config = {}) {
     feedingIdealInterval: Math.min(480, Math.max(60, toNumber(config.feedingIdealInterval || config.feedingIntervalThreshold, DEFAULT_FEEDING_PLAN_CONFIG.feedingIdealInterval))),
     feedingWakeBuffer: Math.min(60, Math.max(0, toNumber(config.feedingWakeBuffer, DEFAULT_FEEDING_PLAN_CONFIG.feedingWakeBuffer))),
     feedingAiPlanningEnabled: config.feedingAiPlanningEnabled === true,
-    feedingAiMaxShift: Math.min(90, Math.max(5, toNumber(config.feedingAiMaxShift, DEFAULT_FEEDING_PLAN_CONFIG.feedingAiMaxShift)))
+    feedingAiMaxShift: Math.min(90, Math.max(5, toNumber(config.feedingAiMaxShift, DEFAULT_FEEDING_PLAN_CONFIG.feedingAiMaxShift))),
+    feedingDayStartHour: normalizeDayStartHour(config.feedingDayStartHour),
+    localReminderEnabled: config.localReminderEnabled === true
   }
 }
 
@@ -78,6 +88,28 @@ function formatDuration(minutes) {
   return m > 0 ? `${h}小时${m}分钟` : `${h}小时`
 }
 
+function padTwo(n) {
+  return String(n).padStart(2, '0')
+}
+
+function getLogicalDayStart(date, dayStartHour = 4) {
+  const d = new Date(date)
+  const cal = new Date(d.getFullYear(), d.getMonth(), d.getDate(), dayStartHour, 0, 0, 0)
+  if (d.getTime() < cal.getTime()) {
+    return new Date(cal.getTime() - 86400000)
+  }
+  return cal
+}
+
+function getLogicalDateStr(date, dayStartHour = 4) {
+  const ds = getLogicalDayStart(date, dayStartHour)
+  return `${ds.getFullYear()}-${padTwo(ds.getMonth() + 1)}-${padTwo(ds.getDate())}`
+}
+
+function isSameLogicalDay(a, b, dayStartHour = 4) {
+  return getLogicalDayStart(a, dayStartHour).getTime() === getLogicalDayStart(b, dayStartHour).getTime()
+}
+
 function startOfDay(date) {
   const d = new Date(date)
   return new Date(d.getFullYear(), d.getMonth(), d.getDate())
@@ -104,7 +136,8 @@ function isInQuietMinute(minute, config) {
   const start = parseClock(config.feedingQuietStart)
   const end = parseClock(config.feedingQuietEnd)
   if (start === null || end === null || start === end) return false
-  const m = ((Math.floor(minute) % 1440) + 1440) % 1440
+  const dayStartOffset = (config.feedingDayStartHour || 0) * 60
+  const m = ((Math.floor(minute) % 1440 + dayStartOffset) % 1440 + 1440) % 1440
   if (start < end) return m >= start && m < end
   return m >= start || m < end
 }
@@ -113,16 +146,19 @@ function nextAllowedMinute(minute, config) {
   if (!isInQuietMinute(minute, config)) return minute
   const start = parseClock(config.feedingQuietStart)
   const end = parseClock(config.feedingQuietEnd)
+  const dayStartOffset = (config.feedingDayStartHour || 0) * 60
+  const startRelative = ((start - dayStartOffset) % 1440 + 1440) % 1440
+  const endRelative = ((end - dayStartOffset) % 1440 + 1440) % 1440
   const dayOffset = Math.floor(minute / 1440) * 1440
   const m = ((Math.floor(minute) % 1440) + 1440) % 1440
 
-  if (start < end) {
-    return dayOffset + end
+  if (startRelative < endRelative) {
+    return dayOffset + endRelative
   }
-  if (m >= start) {
-    return dayOffset + 1440 + end
+  if (m >= startRelative) {
+    return dayOffset + 1440 + endRelative
   }
-  return dayOffset + end
+  return dayOffset + endRelative
 }
 
 function getActiveStartMinute(config) {
@@ -130,8 +166,14 @@ function getActiveStartMinute(config) {
   const start = parseClock(config.feedingQuietStart)
   const end = parseClock(config.feedingQuietEnd)
   if (start === null || end === null || start === end) return 0
-  if (start === 0 || start > end) return end
-  return 0
+  const dayStartOffset = (config.feedingDayStartHour || 0) * 60
+  const startRelative = ((start - dayStartOffset) % 1440 + 1440) % 1440
+  const endRelative = ((end - dayStartOffset) % 1440 + 1440) % 1440
+  if (startRelative < endRelative) {
+    if (startRelative === 0) return endRelative
+    return 0
+  }
+  return endRelative
 }
 
 function getActiveEndMinute(config) {
@@ -139,8 +181,11 @@ function getActiveEndMinute(config) {
   const start = parseClock(config.feedingQuietStart)
   const end = parseClock(config.feedingQuietEnd)
   if (start === null || end === null || start === end) return 1440
-  if (start > end) return start
-  return 1440
+  const dayStartOffset = (config.feedingDayStartHour || 0) * 60
+  const startRelative = ((start - dayStartOffset) % 1440 + 1440) % 1440
+  const endRelative = ((end - dayStartOffset) % 1440 + 1440) % 1440
+  if (startRelative < endRelative) return 1440
+  return startRelative
 }
 
 function getLatestPlanMinute(config) {
@@ -167,7 +212,8 @@ function isOngoingSleep(record) {
 
 function findMorningWake(records, dayStart, config) {
   const activeStart = getActiveStartMinute(config)
-  const noon = 12 * 60
+  const dayStartOffset = (config.feedingDayStartHour || 0) * 60
+  const noon = ((12 * 60 - dayStartOffset) % 1440 + 1440) % 1440
   const wakes = (records || [])
     .filter(r => r && r.type === 'sleep' && r.status === 'completed' && r.endTime)
     .map(r => new Date(r.endTime))
@@ -256,9 +302,10 @@ function buildFeedingPlan(records = [], options = {}) {
   const amount = config.feedingPlanAmount
   const date = options.date ? new Date(options.date) : new Date()
   const now = options.now ? new Date(options.now) : new Date()
-  const dayStart = startOfDay(date)
-  const nowMinute = sameDay(now, date) ? getMinuteInDay(now, dayStart) : null
+  const dayStart = getLogicalDayStart(date, config.feedingDayStartHour)
+  const nowMinute = isSameLogicalDay(now, date, config.feedingDayStartHour) ? getMinuteInDay(now, dayStart) : null
   const activeStart = getActiveStartMinute(config)
+  const dayStartOffset = config.feedingDayStartHour * 60
   const defaultAiState = { involvementPercent: 0, applied: false, role: 'local_rules_only' }
 
   if (!config.feedingPlanEnabled) {
@@ -296,7 +343,7 @@ function buildFeedingPlan(records = [], options = {}) {
     planItems.push({
       key: item.record._id || `done_${index}`,
       time: item.time,
-      timeLabel: minutesToClock(minute),
+      timeLabel: minutesToClock(minute + dayStartOffset),
       state: 'done',
       source: 'actual',
       amount: (item.record.data && item.record.data.amount) || amount
@@ -308,7 +355,7 @@ function buildFeedingPlan(records = [], options = {}) {
     planItems.push({
       key: ongoingFeeding.record._id || 'current',
       time: ongoingFeeding.time,
-      timeLabel: minutesToClock(minute),
+      timeLabel: minutesToClock(minute + dayStartOffset),
       state: 'current',
       source: 'actual',
       amount
@@ -379,7 +426,7 @@ function buildFeedingPlan(records = [], options = {}) {
     planItems.push({
       key: `future_${i}_${nextMinute}`,
       time: dateFromMinute(dayStart, nextMinute),
-      timeLabel: minutesToClock(nextMinute),
+      timeLabel: minutesToClock(nextMinute + dayStartOffset),
       state,
       source: 'rule',
       amount
@@ -392,7 +439,7 @@ function buildFeedingPlan(records = [], options = {}) {
 
   if (isTight) {
     const canFit = realisticMax
-    const deadlineLabel = minutesToClock(latestMinute)
+    const deadlineLabel = minutesToClock(latestMinute + dayStartOffset)
     if (canFit <= 0) {
       warning = `还需 ${futureCount} 顿但今天已无法再安排，明天尽量提前开始`
     } else {
@@ -472,5 +519,8 @@ module.exports = {
   parseClock,
   minutesToClock,
   isInQuietMinute,
-  nextAllowedMinute
+  nextAllowedMinute,
+  getLogicalDayStart,
+  getLogicalDateStr,
+  isSameLogicalDay
 }

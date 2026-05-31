@@ -109,6 +109,10 @@
         <text class="feeding-info-value {{feedingOverdue ? 'overdue' : 'normal'}}">{{lastFeedingAgo}}</text>
       </view>
     </view>
+    <view wx:if="{{isToday && aiAssistantFactText}}" class="care-facts-line">
+      <text class="care-facts-label">当前</text>
+      <text class="care-facts-text">{{aiAssistantFactText}}</text>
+    </view>
   </view>
 
   <view wx:if="{{isToday && feedingPlan && feedingPlan.enabled}}" class="card feeding-plan-card {{feedingPlan.status}}">
@@ -143,6 +147,30 @@
       </view>
     </scroll-view>
     <view wx:if="{{feedingPlan.warning}}" class="feeding-plan-warning">{{feedingPlan.warning}}</view>
+    <view wx:if="{{aiAssistant || aiAssistantLoading}}" class="ai-assistant-section">
+      <view class="ai-assistant-divider"></view>
+      <view wx:if="{{aiAssistant}}" class="ai-assistant-content">
+        <view class="ai-assistant-header">
+          <text class="ai-assistant-icon">💡</text>
+          <view class="ai-assistant-title">
+            <text class="ai-assistant-status">{{aiAssistant.status}}</text>
+          </view>
+          <view class="ai-assistant-actions">
+            <view wx:if="{{aiVoiceEnabled}}" class="ai-assistant-voice {{aiVoicePlaying ? 'playing' : ''}} {{aiVoiceLoading ? 'loading' : ''}}" catchtap="playAiAssistantVoice">
+              {{aiVoiceLoading ? '…' : (aiVoicePlaying ? '■' : '🔊')}}
+            </view>
+            <view class="ai-assistant-refresh" bindtap="refreshAiAssistant">↻</view>
+          </view>
+        </view>
+        <view wx:if="{{aiAssistant.suggestions.length}}" class="ai-assistant-suggestions">
+          <text wx:for="{{aiAssistant.suggestions}}" wx:key="index" class="ai-assistant-suggestion">· {{item}}</text>
+        </view>
+        <text wx:if="{{aiAssistantReasonText}}" class="ai-assistant-reason">{{aiAssistantReasonText}}</text>
+      </view>
+      <view wx:elif="{{aiAssistantLoading}}" class="ai-assistant-loading">
+        <text class="ai-assistant-loading-text">AI 分析中...</text>
+      </view>
+    </view>
   </view>
 
   <!-- 日期选择 + 时间线 -->

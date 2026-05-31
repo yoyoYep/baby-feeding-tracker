@@ -6,6 +6,7 @@ const {
   formatDateStr,
   getDateLabel
 } = require('../../utils/timeline-layout')
+const { getLogicalDayStart, isSameLogicalDay, normalizeFeedingPlanConfig } = require('../../utils/feeding-plan')
 
 const DEFAULT_DAYS = 2
 
@@ -56,7 +57,10 @@ Page({
     this.setData({ loading: true })
     try {
       await this._ensureBabyInfo()
-      const latestDate = startOfDay(this.data.currentDate || new Date())
+      const app = getApp()
+      const config = normalizeFeedingPlanConfig((app && app.globalData && app.globalData.config) || {})
+      const dayStartHour = config.feedingDayStartHour
+      const latestDate = getLogicalDayStart(this.data.currentDate || new Date(), dayStartHour)
       const days = this.data.loadedDays || DEFAULT_DAYS
       const records = await this._loadRecordsForDays(latestDate, days)
       const now = new Date()
@@ -64,7 +68,8 @@ Page({
         latestDate,
         days,
         now,
-        babyInfo: getApp().globalData.babyInfo
+        babyInfo: app.globalData.babyInfo,
+        dayStartHour
       })
       const recordCount = daySections.reduce((sum, section) => sum + section.recordCount, 0)
       const durationCount = daySections.reduce((sum, section) => sum + section.durationItems.length, 0)
@@ -88,8 +93,8 @@ Page({
   async _loadRecordsForDays(latestDate, days) {
     const tasks = []
     for (let i = 0; i < days; i++) {
-      const dayStart = addDays(latestDate, -i)
-      const dayEnd = addDays(dayStart, 1)
+      const dayStart = new Date(latestDate.getTime() - i * 86400000)
+      const dayEnd = new Date(dayStart.getTime() + 86400000)
       tasks.push(db.getRecordsOverlappingDateRange(dayStart, dayEnd, { lookbackDays: 7, limit: 120 }))
     }
 
@@ -176,13 +181,16 @@ Page({
   },
 
   _setDateState(date, shouldLoad = true) {
-    const current = startOfDay(Number.isNaN(date.getTime()) ? new Date() : date)
+    const app = getApp()
+    const config = normalizeFeedingPlanConfig((app && app.globalData && app.globalData.config) || {})
+    const dayStartHour = config.feedingDayStartHour
+    const current = getLogicalDayStart(Number.isNaN(date.getTime()) ? new Date() : date, dayStartHour)
     const today = new Date()
-    const isToday = current.toDateString() === today.toDateString()
+    const isToday = isSameLogicalDay(current, today, dayStartHour)
     this.setData({
       currentDate: current,
       dateStr: formatDateStr(current),
-      dateLabel: getDateLabel(current, today),
+      dateLabel: getDateLabel(current, today, dayStartHour),
       rangeText: this._getRangeText(current, DEFAULT_DAYS),
       loadedDays: DEFAULT_DAYS,
       isToday,

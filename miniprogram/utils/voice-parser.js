@@ -431,7 +431,10 @@ function formatTime(date) {
   const m = date.getMinutes().toString().padStart(2, '0')
   const dateStr = `${month}月${day}日`
 
-  if (date.toDateString() === now.toDateString()) return `今天 ${h}:${m}`
+  const { isSameLogicalDay, normalizeFeedingPlanConfig } = require('./feeding-plan')
+  const app = getApp()
+  const config = normalizeFeedingPlanConfig((app && app.globalData && app.globalData.config) || {})
+  if (isSameLogicalDay(date, now, config.feedingDayStartHour)) return `今天 ${h}:${m}`
   return `${dateStr} ${h}:${m}`
 }
 

@@ -1,0 +1,9 @@
+{
+  "name": "babyAssistant",
+  "version": "1.0.0",
+  "description": "调用DeepSeek推断宝宝当前状态并给出照护提醒",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

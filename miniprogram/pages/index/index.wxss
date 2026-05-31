@@ -308,6 +308,34 @@
   color: #E53935;
 }
 
+.care-facts-line {
+  margin-top: 14rpx;
+  padding: 12rpx 18rpx;
+  border-radius: 10rpx;
+  background: #F7FBFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+}
+
+.care-facts-label {
+  flex-shrink: 0;
+  padding: 3rpx 10rpx;
+  border-radius: 999rpx;
+  background: #EAF4FF;
+  color: #4E85B6;
+  font-size: 21rpx;
+  line-height: 1.25;
+}
+
+.care-facts-text {
+  min-width: 0;
+  color: #617386;
+  font-size: 23rpx;
+  line-height: 1.4;
+}
+
 .feeding-plan-card {
   padding: 24rpx;
   border-left: 6rpx solid #42A5F5;
@@ -560,6 +588,100 @@
   border-radius: 8rpx;
   padding: 12rpx 16rpx;
   font-size: 23rpx;
+}
+
+/* AI 助手 */
+.ai-assistant-section {
+  margin-top: 16rpx;
+}
+.ai-assistant-divider {
+  height: 1rpx;
+  background: #E8F4FD;
+  margin-bottom: 16rpx;
+}
+.ai-assistant-content {
+  background: #F0F9FF;
+  border-radius: 12rpx;
+  padding: 16rpx 20rpx;
+}
+.ai-assistant-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 8rpx;
+}
+.ai-assistant-icon {
+  font-size: 28rpx;
+  line-height: 1.35;
+}
+.ai-assistant-title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.ai-assistant-status {
+  font-size: 26rpx;
+  color: #1A1A1A;
+  font-weight: 500;
+  line-height: 1.35;
+}
+.ai-assistant-actions {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  flex-shrink: 0;
+}
+.ai-assistant-voice {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+  background: #E3F2FD;
+  color: #2E83C5;
+  font-size: 28rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.ai-assistant-voice.playing {
+  background: #FFF3F4;
+  color: #E8505B;
+  font-size: 24rpx;
+}
+.ai-assistant-voice.loading {
+  color: #8795A6;
+}
+.ai-assistant-refresh {
+  font-size: 32rpx;
+  color: #999;
+  padding: 8rpx;
+}
+.ai-assistant-suggestions {
+  margin-top: 10rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+.ai-assistant-suggestion {
+  font-size: 24rpx;
+  color: #333;
+  line-height: 1.5;
+}
+.ai-assistant-reason {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: #999;
+}
+.ai-assistant-loading {
+  padding: 16rpx 20rpx;
+  background: #F0F9FF;
+  border-radius: 12rpx;
+  text-align: center;
+}
+.ai-assistant-loading-text {
+  font-size: 24rpx;
+  color: #999;
 }
 
 /* 时间线 */

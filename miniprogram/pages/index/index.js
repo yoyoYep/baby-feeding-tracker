@@ -1,7 +1,8 @@
 const db = require('../../utils/db')
 const { getPercentile } = require('../../utils/growth-standard')
-const { buildFeedingPlan, normalizeFeedingPlanConfig } = require('../../utils/feeding-plan')
-const { getFeedingReminderKey, getSnoozeCountdownText } = require('../../utils/local-reminders')
+const { buildFeedingPlan, normalizeFeedingPlanConfig, getLogicalDayStart, getLogicalDateStr, isSameLogicalDay } = require('../../utils/feeding-plan')
+const { getFeedingReminderKey, getTodoReminderKey, getSnoozeCountdownText, buildLogicalDateTime, formatTodoReminderText, isTodoCancelled } = require('../../utils/local-reminders')
+const { matchesTodoDate } = require('../../utils/todo-schedule')
 
 const DELAYED_FEEDING_KEY = 'delayed_feeding_start'
 const DELAYED_START_MIN_MS = 5000
@@ -31,6 +32,13 @@ Page({
     defaultFeedingAmount: 0,
     feedingPlan: null,
     feedingReminderCountdown: '',
+    aiAssistant: null,
+    aiAssistantLoading: false,
+    aiAssistantFactText: '',
+    aiAssistantReasonText: '',
+    aiVoiceEnabled: false,
+    aiVoiceLoading: false,
+    aiVoicePlaying: false,
     delayedFeeding: null,
     delayedFeedingLeft: '',
     timeline: [],
@@ -149,13 +157,17 @@ Page({
 
   async _refreshHomeData() {
     const ongoingLoad = this.loadOngoingRecords().then(() => this._loadDelayedFeeding())
+    const dayLoad = this.loadDayData()
     await Promise.all([
-      this.loadDayData(),
-      ongoingLoad
+      dayLoad,
+      ongoingLoad,
+      this._calcRecentPattern()
     ])
+    await this._loadAssistantTodoContext()
     this._updateFeedingPlan()
     this._startFeedingPlanTimer()
     await this.updateLastFeedingTimer()
+    this._loadAiAssistant()
   },
 
   onHide() {
@@ -170,7 +182,10 @@ Page({
     try {
       await this._ensureBabyInfo()
       const d = this.data.currentDate || new Date()
-      const start = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+      const app = getApp()
+      const config = normalizeFeedingPlanConfig((app && app.globalData && app.globalData.config) || {})
+      const dayStartHour = config.feedingDayStartHour
+      const start = getLogicalDayStart(d, dayStartHour)
       const end = new Date(start.getTime() + 86400000)
       const prevStart = new Date(start.getTime() - 86400000)
 
@@ -232,6 +247,8 @@ Page({
       }
       if (this.data.ongoingFeeding && this.data.ongoingFeeding.startTime) {
         this._lastFeedingTime = new Date(this.data.ongoingFeeding.startTime).getTime()
+        this._lastCompletedFeedingRecord = null
+        this._lastFeedingTimeBasis = 'start'
         this._feedingThreshold = (getApp().globalData.config && getApp().globalData.config.feedingIntervalThreshold) || 180
         this.setData({ lastFeedingLabel: '本次喂奶已开始' })
         this._updateLastFeedingAgo()
@@ -244,7 +261,9 @@ Page({
       const res = await db.getLastFeeding()
       if (res.data && res.data.length > 0) {
         const last = res.data[0]
+        this._lastCompletedFeedingRecord = last
         this._lastFeedingTime = new Date(last.startTime).getTime()
+        this._lastFeedingTimeBasis = 'start'
         this._feedingThreshold = (getApp().globalData.config && getApp().globalData.config.feedingIntervalThreshold) || 180
         this.setData({ lastFeedingLabel: '距上次喂奶' })
         this._updateLastFeedingAgo()
@@ -253,7 +272,10 @@ Page({
         }, 60000)
       } else {
         this._lastFeedingTime = null
+        this._lastCompletedFeedingRecord = null
+        this._lastFeedingTimeBasis = ''
         this.setData({ lastFeedingAgo: '', feedingOverdue: false, lastFeedingLabel: '距上次喂奶' })
+        this._updateAssistantFactText()
       }
     } catch (e) {
       console.error(e)
@@ -265,13 +287,16 @@ Page({
     const diff = Date.now() - this._lastFeedingTime
     const minutes = Math.floor(diff / 60000)
     const overdue = minutes >= (this._feedingThreshold || 180)
-    if (minutes < 60) {
-      this.setData({ lastFeedingAgo: `${minutes}分钟`, feedingOverdue: overdue })
-    } else {
-      const h = Math.floor(minutes / 60)
-      const m = minutes % 60
-      this.setData({ lastFeedingAgo: `${h}小时${m}分钟`, feedingOverdue: overdue })
-    }
+    this.setData({ lastFeedingAgo: this._formatMinutesText(minutes), feedingOverdue: overdue })
+    this._updateAssistantFactText()
+  },
+
+  _formatMinutesText(minutes) {
+    const total = Math.max(0, Math.floor(minutes || 0))
+    if (total < 60) return `${total}分钟`
+    const h = Math.floor(total / 60)
+    const m = total % 60
+    return `${h}小时${m}分钟`
   },
 
   _toDate(value) {
@@ -295,6 +320,34 @@ Page({
     }
 
     return start
+  },
+
+  _getCompletedFeedingEndTime(record) {
+    if (!record || record.type !== 'feeding' || record.status !== 'completed') return null
+    const start = this._toDate(record.startTime)
+    if (!start) return null
+
+    const end = this._toDate(record.endTime)
+    if (end && end.getTime() >= start.getTime()) return end
+    return start
+  },
+
+  _getLastCompletedFeeding(records = []) {
+    const feedings = (records || [])
+      .filter(record => record && record.type === 'feeding' && record.status === 'completed')
+      .map(record => ({ record, end: this._getCompletedFeedingEndTime(record) }))
+      .filter(item => item.end)
+      .sort((a, b) => b.end.getTime() - a.end.getTime())
+    return feedings.length ? feedings[0].record : null
+  },
+
+  _getLastCompletedSleep(records = []) {
+    const sleeps = (records || [])
+      .filter(record => record && record.type === 'sleep' && record.status === 'completed' && record.endTime)
+      .map(record => ({ record, end: this._toDate(record.endTime) }))
+      .filter(item => item.end)
+      .sort((a, b) => b.end.getTime() - a.end.getTime())
+    return sleeps.length ? sleeps[0].record : null
   },
 
   _recordStartsInRange(record, start, end) {
@@ -485,6 +538,7 @@ Page({
         const elapsed = Date.now() - new Date(this.data.ongoingSleep.startTime).getTime()
         this.setData({ sleepElapsed: this._formatElapsed(elapsed) })
       }
+      this._updateAssistantFactText()
     }, 1000)
   },
 
@@ -669,6 +723,7 @@ Page({
       clearTimeout(this._successNoticeTimer)
       this._successNoticeTimer = null
     }
+    this._stopAiAssistantVoice()
   },
 
   prevDay() {
@@ -695,7 +750,9 @@ Page({
 
   _setDate(d) {
     const today = new Date()
-    const isToday = d.toDateString() === today.toDateString()
+    const app = getApp()
+    const config = normalizeFeedingPlanConfig((app && app.globalData && app.globalData.config) || {})
+    const isToday = isSameLogicalDay(d, today, config.feedingDayStartHour)
     this.setData({
       currentDate: d,
       currentDateStr: this._formatDateStr(d),
@@ -775,15 +832,21 @@ Page({
   },
 
   _formatDateStr(d) {
-    return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`
+    const app = getApp()
+    const config = normalizeFeedingPlanConfig((app && app.globalData && app.globalData.config) || {})
+    return getLogicalDateStr(d, config.feedingDayStartHour)
   },
 
   _getDateLabel(d) {
     const today = new Date()
-    if (d.toDateString() === today.toDateString()) return '今天'
+    const app = getApp()
+    const config = normalizeFeedingPlanConfig((app && app.globalData && app.globalData.config) || {})
+    const dayStartHour = config.feedingDayStartHour
+    if (isSameLogicalDay(d, today, dayStartHour)) return '今天'
     const yesterday = new Date(today.getTime() - 86400000)
-    if (d.toDateString() === yesterday.toDateString()) return '昨天'
-    return `${d.getMonth() + 1}月${d.getDate()}日`
+    if (isSameLogicalDay(d, yesterday, dayStartHour)) return '昨天'
+    const ds = getLogicalDayStart(d, dayStartHour)
+    return `${ds.getMonth() + 1}月${ds.getDate()}日`
   },
 
   // 语音记录回调
@@ -1175,6 +1238,664 @@ Page({
       await this._refreshHomeData()
     } catch (e) {
       wx.showToast({ title: '保存失败', icon: 'none' })
+    }
+  },
+
+  // AI 助手
+  async _loadAssistantTodoContext() {
+    if (!this.data.isToday) {
+      this._assistantTodoContext = null
+      return
+    }
+
+    try {
+      const now = new Date()
+      const app = getApp()
+      const config = normalizeFeedingPlanConfig((app && app.globalData && app.globalData.config) || {})
+      const dayStartHour = config.feedingDayStartHour
+      const date = this.data.currentDate || now
+      const dateStr = getLogicalDateStr(date, dayStartHour)
+      const records = this._dayRecords || []
+      const completedMap = {}
+
+      records.forEach(record => {
+        if (record.todoId && record.todoDate === dateStr && record.status === 'completed') {
+          completedMap[record.todoId] = record
+        }
+      })
+
+      const todoRes = await db.getTodos()
+      const items = (todoRes.data || [])
+        .filter(todo => todo && todo.enabled !== false && matchesTodoDate(todo, dateStr))
+        .map(todo => {
+          const scheduledAt = buildLogicalDateTime(dateStr, todo.time, dayStartHour)
+          const done = !!completedMap[todo._id]
+          const cancelled = !done && isTodoCancelled(todo, dateStr)
+          if (cancelled) return null
+          const minutesFromNow = Math.round((scheduledAt.getTime() - now.getTime()) / 60000)
+          const reminderKey = getTodoReminderKey(todo, dateStr)
+          return {
+            id: todo._id,
+            type: todo.type || 'health_custom',
+            title: formatTodoReminderText(todo),
+            time: todo.time || '',
+            status: done ? 'done' : (minutesFromNow <= 0 ? 'due' : 'upcoming'),
+            minutesFromNow,
+            snoozed: !done && !!getSnoozeCountdownText(dateStr, reminderKey, now)
+          }
+        })
+        .filter(Boolean)
+
+      const pending = items.filter(item => item.status !== 'done')
+      const dueNow = pending
+        .filter(item => item.minutesFromNow <= 0)
+        .sort((a, b) => a.minutesFromNow - b.minutesFromNow)
+      const upcoming = pending
+        .filter(item => item.minutesFromNow > 0)
+        .sort((a, b) => a.minutesFromNow - b.minutesFromNow)
+
+      this._assistantTodoContext = {
+        date: dateStr,
+        summary: {
+          total: items.length,
+          done: items.filter(item => item.status === 'done').length,
+          pending: pending.length,
+          due: dueNow.length,
+          upcoming: upcoming.length
+        },
+        dueNow: dueNow.slice(0, 4),
+        upcoming: upcoming.slice(0, 3)
+      }
+    } catch (e) {
+      console.warn('加载AI待办上下文失败', e)
+      this._assistantTodoContext = null
+    }
+  },
+
+  async _loadAiAssistant() {
+    if (!this.data.isToday) return
+
+    const context = this._buildAssistantContext()
+    if (!context) return
+    const signature = this._getAssistantContextSignature(context)
+    const cache = wx.getStorageSync('ai_assistant_cache')
+    if (cache && cache.data && cache.signature === signature && (Date.now() - cache.timestamp < 10 * 60 * 1000)) {
+      if (!this.data.aiAssistant) {
+        this.setData({
+          aiAssistant: cache.data,
+          aiAssistantReasonText: this._getAiAssistantReasonText(cache.data, this.data.aiAssistantFactText)
+        })
+      }
+      return
+    }
+
+    this.setData({ aiAssistantLoading: true })
+    try {
+      if (!context) { this.setData({ aiAssistantLoading: false }); return }
+
+      const res = await wx.cloud.callFunction({ name: 'babyAssistant', data: { context } })
+      const result = res.result
+      if (result && result.success && result.data) {
+        this.setData({
+          aiAssistant: result.data,
+          aiAssistantLoading: false,
+          aiAssistantReasonText: this._getAiAssistantReasonText(result.data, this.data.aiAssistantFactText)
+        })
+        wx.setStorageSync('ai_assistant_cache', { data: result.data, timestamp: Date.now(), signature })
+      } else {
+        this.setData({ aiAssistantLoading: false })
+      }
+    } catch (e) {
+      console.warn('AI助手请求失败', e)
+      this.setData({ aiAssistantLoading: false })
+    }
+  },
+
+  async refreshAiAssistant() {
+    wx.removeStorageSync('ai_assistant_cache')
+    this._stopAiAssistantVoice()
+    this.setData({ aiAssistant: null, aiAssistantReasonText: '' })
+    await this._loadAssistantTodoContext()
+    this._loadAiAssistant()
+  },
+
+  _normalizeSpeechText(text) {
+    return String(text || '')
+      .replace(/[·•]/g, '。')
+      .replace(/\s+/g, ' ')
+      .replace(/([。！？])+/g, '$1')
+      .trim()
+      .slice(0, 140)
+  },
+
+  _isSameAssistantLine(a, b) {
+    const clean = (text) => this._normalizeAssistantLine(text)
+    return clean(a) && clean(a) === clean(b)
+  },
+
+  _normalizeAssistantLine(text) {
+    return String(text || '')
+      .replace(/(\d+)小时(\d+)分钟/g, (_, h, m) => `${parseInt(h, 10) * 60 + parseInt(m, 10)}分钟`)
+      .replace(/(\d+)小时/g, (_, h) => `${parseInt(h, 10) * 60}分钟`)
+      .replace(/宝宝刚睡|正在睡觉|已睡|睡觉中/g, '睡')
+      .replace(/宝宝/g, '')
+      .replace(/[，。,.、\s]/g, '')
+      .trim()
+  },
+
+  _isRepeatedAssistantReason(reason, factText) {
+    const reasonLine = this._normalizeAssistantLine(reason)
+    const factLine = this._normalizeAssistantLine(factText)
+    if (!reasonLine || !factLine) return false
+    if (reasonLine === factLine) return true
+
+    const fragments = String(factText || '')
+      .split(/[，。,.、]/)
+      .map(item => this._normalizeAssistantLine(item))
+      .filter(item => item.length >= 4)
+    if (!fragments.length) return false
+
+    const hits = fragments.filter(item => reasonLine.includes(item) || item.includes(reasonLine))
+    if (hits.length === fragments.length) return true
+    const covered = hits.reduce((sum, item) => sum + item.length, 0)
+    return hits.length > 0 && covered / reasonLine.length >= 0.6
+  },
+
+  _getAiAssistantReasonText(assistant, factText = this.data.aiAssistantFactText) {
+    const reason = assistant && assistant.reason
+    if (!reason) return ''
+    if (this._isRepeatedAssistantReason(reason, factText)) return ''
+    return reason
+  },
+
+  _buildAiAssistantSpeechText() {
+    const assistant = this.data.aiAssistant
+    if (!assistant) return ''
+    const parts = []
+    if (assistant.status) parts.push(assistant.status)
+    ;(assistant.suggestions || []).slice(0, 2).forEach(item => {
+      if (item) parts.push(item)
+    })
+    if (this.data.aiAssistantFactText) parts.push(this.data.aiAssistantFactText)
+    const reasonText = this._getAiAssistantReasonText(assistant)
+    if (reasonText) {
+      parts.push(`依据：${reasonText}`)
+    }
+    return this._normalizeSpeechText(parts.filter(Boolean).join('。'))
+  },
+
+  _hashText(text) {
+    let hash = 0
+    const source = String(text || '')
+    for (let i = 0; i < source.length; i++) {
+      hash = ((hash << 5) - hash + source.charCodeAt(i)) | 0
+    }
+    return String(hash).replace('-', 'n')
+  },
+
+  _getAiAudioContext() {
+    if (this._aiAudio) return this._aiAudio
+    const audio = wx.createInnerAudioContext()
+    audio.obeyMuteSwitch = false
+    audio.onEnded(() => {
+      this.setData({ aiVoicePlaying: false })
+    })
+    audio.onStop(() => {
+      this.setData({ aiVoicePlaying: false })
+    })
+    audio.onError((err) => {
+      console.warn('AI语音播放失败', err)
+      this.setData({ aiVoiceLoading: false, aiVoicePlaying: false })
+      wx.showToast({ title: '播放失败', icon: 'none' })
+    })
+    this._aiAudio = audio
+    return audio
+  },
+
+  _stopAiAssistantVoice() {
+    if (this._aiAudio) {
+      try {
+        this._aiAudio.stop()
+      } catch (e) {}
+    }
+    if (this.data.aiVoicePlaying || this.data.aiVoiceLoading) {
+      this.setData({ aiVoicePlaying: false, aiVoiceLoading: false })
+    }
+  },
+
+  _writeAiVoiceFile(filePath, base64Audio) {
+    return new Promise((resolve, reject) => {
+      wx.getFileSystemManager().writeFile({
+        filePath,
+        data: base64Audio,
+        encoding: 'base64',
+        success: resolve,
+        fail: reject
+      })
+    })
+  },
+
+  _playAiVoiceFile(filePath) {
+    const audio = this._getAiAudioContext()
+    audio.stop()
+    audio.src = filePath
+    audio.play()
+    this.setData({ aiVoicePlaying: true, aiVoiceLoading: false })
+  },
+
+  async playAiAssistantVoice() {
+    if (this.data.aiVoiceLoading) return
+    if (this.data.aiVoicePlaying) {
+      this._stopAiAssistantVoice()
+      return
+    }
+
+    const text = this._buildAiAssistantSpeechText()
+    if (!text) {
+      wx.showToast({ title: '暂无可播报内容', icon: 'none' })
+      return
+    }
+
+    const key = this._hashText(text)
+    this._aiVoiceFiles = this._aiVoiceFiles || {}
+    if (this._aiVoiceFiles[key]) {
+      this._playAiVoiceFile(this._aiVoiceFiles[key])
+      return
+    }
+
+    this.setData({ aiVoiceLoading: true })
+    try {
+      const res = await wx.cloud.callFunction({
+        name: 'textToSpeech',
+        data: { text }
+      })
+      const result = res.result || {}
+      if (!result.success || !result.audio) {
+        throw new Error(result.error || '语音合成失败')
+      }
+
+      const filePath = `${wx.env.USER_DATA_PATH}/ai_assistant_${key}.mp3`
+      await this._writeAiVoiceFile(filePath, result.audio)
+      this._aiVoiceFiles[key] = filePath
+      this._playAiVoiceFile(filePath)
+    } catch (e) {
+      console.warn('AI语音合成失败', e)
+      this.setData({ aiVoiceLoading: false, aiVoicePlaying: false })
+      const msg = String(e && e.message || e || '')
+      if (msg.includes('ServerNotOpen') || msg.includes('TTS service is not open')) {
+        wx.showModal({
+          title: '需开通语音合成',
+          content: '腾讯云 TTS 服务还未开通。请在腾讯云语音合成控制台完成开通后，再重新部署 textToSpeech 云函数。',
+          showCancel: false,
+          confirmText: '知道了'
+        })
+      } else {
+        wx.showToast({ title: '语音生成失败', icon: 'none' })
+      }
+    }
+  },
+
+  _updateAssistantFactText(now = new Date()) {
+    if (!this.data.isToday) {
+      if (this.data.aiAssistantFactText || this.data.aiAssistantReasonText) {
+        this.setData({ aiAssistantFactText: '', aiAssistantReasonText: '' })
+      }
+      return ''
+    }
+
+    const parts = []
+    if (this.data.ongoingFeeding && this.data.ongoingFeeding.startTime) {
+      const start = this._toDate(this.data.ongoingFeeding.startTime)
+      if (start) {
+        parts.push(`正在喂奶 ${this._formatMinutesText(Math.floor((now - start) / 60000))}`)
+      }
+    } else {
+      const lastFeeding = this._getLastCompletedFeeding(this._dayRecords || []) || this._lastCompletedFeedingRecord
+      const end = this._getCompletedFeedingEndTime(lastFeeding)
+      if (end) {
+        parts.push(`距上次喂奶结束 ${this._formatMinutesText(Math.floor((now - end) / 60000))}`)
+      }
+    }
+
+    if (this.data.ongoingSleep && this.data.ongoingSleep.startTime) {
+      const start = this._toDate(this.data.ongoingSleep.startTime)
+      if (start) {
+        parts.push(`正在睡觉 ${this._formatMinutesText(Math.floor((now - start) / 60000))}`)
+      }
+    } else {
+      const lastSleep = this._getLastCompletedSleep(this._dayRecords || [])
+      const sleepEnd = this._toDate(lastSleep && lastSleep.endTime)
+      if (sleepEnd) {
+        parts.push(`醒了 ${this._formatMinutesText(Math.floor((now - sleepEnd) / 60000))}`)
+      }
+    }
+
+    const text = parts.join('，')
+    const reasonText = this._getAiAssistantReasonText(this.data.aiAssistant, text)
+    const patch = {}
+    if (this.data.aiAssistantFactText !== text) {
+      patch.aiAssistantFactText = text
+    }
+    if (this.data.aiAssistantReasonText !== reasonText) {
+      patch.aiAssistantReasonText = reasonText
+    }
+    if (Object.keys(patch).length) {
+      this.setData(patch)
+    }
+    return text
+  },
+
+  _getAssistantContextSignature(context) {
+    const source = JSON.stringify({
+      babyAgeMonths: context.babyAgeMonths,
+      todayFeedings: context.todayFeedings,
+      todaySleeps: context.todaySleeps,
+      todayDiapers: context.todayDiapers,
+      ongoing: context.ongoing,
+      lastFeedingMinBucket: context.lastFeedingMinAgo == null ? null : Math.floor(context.lastFeedingMinAgo / 10),
+      lastFeedingStartMinBucket: context.lastFeedingStartMinAgo == null ? null : Math.floor(context.lastFeedingStartMinAgo / 10),
+      lastFeedingDurationMin: context.lastFeedingDurationMin,
+      lastSleepEndMinBucket: context.lastSleepEndMinAgo == null ? null : Math.floor(context.lastSleepEndMinAgo / 10),
+      careFacts: context.careFacts,
+      plan: context.plan ? {
+        ...context.plan,
+        nextPlannedMinutesFromNow: context.plan.nextPlannedMinutesFromNow == null
+          ? null
+          : Math.floor(context.plan.nextPlannedMinutesFromNow / 10) * 10
+      } : null,
+      pattern: context.pattern,
+      todos: context.todos
+    })
+    let hash = 0
+    for (let i = 0; i < source.length; i++) {
+      hash = ((hash << 5) - hash + source.charCodeAt(i)) | 0
+    }
+    return String(hash)
+  },
+
+  _getMinuteOfDay(date) {
+    return date.getHours() * 60 + date.getMinutes()
+  },
+
+  _formatClockFromMinute(minute) {
+    const safe = ((Math.round(minute) % 1440) + 1440) % 1440
+    const h = Math.floor(safe / 60)
+    const m = safe % 60
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`
+  },
+
+  _buildCareFacts(records, now, values = {}) {
+    const app = getApp()
+    const config = normalizeFeedingPlanConfig((app && app.globalData && app.globalData.config) || {})
+    const dayStart = getLogicalDayStart(now, config.feedingDayStartHour)
+    const dayEnd = new Date(dayStart.getTime() + 86400000)
+    const sleepRecords = (records || []).filter(r => r.type === 'sleep' && (r.status === 'completed' || r.status === 'ongoing'))
+    const todaySleepTotalMin = sleepRecords.reduce((sum, record) => {
+      return sum + this._getClippedDurationMinutes(record, dayStart, dayEnd)
+    }, 0)
+    const napCount = sleepRecords.filter(r => r.status === 'completed' && r.endTime).length
+    const pattern = values.pattern || null
+    const avgDailySleepMin = pattern && pattern.avgDailySleepMin
+    const sleepDebtMin = avgDailySleepMin ? Math.round(avgDailySleepMin - todaySleepTotalMin) : null
+
+    return {
+      firstCheckOrder: ['feeding', 'sleep'],
+      currentLocalTime: this._formatClock(now),
+      awakeSinceLastSleepMin: values.lastSleepEndMinAgo,
+      todaySleepTotalMin,
+      todayNapCount: napCount,
+      recentAvgDailySleepMin: avgDailySleepMin || null,
+      sleepDebtMin,
+      samePeriodSleepPattern: pattern && pattern.samePeriodSleepPattern || null,
+      feeding: {
+        lastFeedingStartMinAgo: values.lastFeedingStartMinAgo,
+        lastFeedingEndMinAgo: values.lastFeedingMinAgo,
+        lastFeedingDurationMin: values.lastFeedingDurationMin,
+        nextPlannedMinutesFromNow: values.nextPlannedMinutesFromNow,
+        nextPlannedTime: values.nextPlannedTime || ''
+      },
+      note: '这些是事实和近期规律，不是硬阈值；请结合宝宝年龄、当天睡眠、同一时段规律判断。'
+    }
+  },
+
+  _buildAssistantContext() {
+    const records = this._dayRecords || []
+    const now = new Date()
+    const app = getApp()
+    const babyInfo = app.globalData.babyInfo || {}
+
+    let babyAgeMonths = null
+    if (babyInfo.birthday) {
+      const birth = new Date(babyInfo.birthday)
+      if (!isNaN(birth.getTime())) {
+        babyAgeMonths = Math.round((now - birth) / (30.44 * 24 * 60 * 60 * 1000) * 10) / 10
+      }
+    }
+
+    const fmt = (d) => `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`
+
+    const todayFeedings = records
+      .filter(r => r.type === 'feeding' && r.status === 'completed')
+      .map(r => {
+        const start = this._toDate(r.startTime)
+        const end = this._getCompletedFeedingEndTime(r)
+        const durationMin = start && end ? Math.max(0, Math.round((end - start) / 60000)) : null
+        return {
+          start: start ? fmt(start) : '',
+          end: end ? fmt(end) : '',
+          durationMin,
+          amount: (r.data && r.data.amount) || null
+        }
+      })
+
+    const todaySleeps = records
+      .filter(r => r.type === 'sleep' && r.status === 'completed' && r.endTime)
+      .map(r => {
+        const s = new Date(r.startTime)
+        const e = new Date(r.endTime)
+        return { start: fmt(s), end: fmt(e), durationMin: Math.round((e - s) / 60000) }
+      })
+
+    const todayDiapers = records
+      .filter(r => r.type === 'diaper')
+      .map(r => ({ time: fmt(new Date(r.startTime)), type: (r.data && r.data.subType) || 'unknown' }))
+
+    let ongoing = null
+    if (this.data.ongoingSleep) {
+      const s = new Date(this.data.ongoingSleep.startTime)
+      ongoing = { type: 'sleep', startTime: fmt(s), elapsedMin: Math.round((now - s) / 60000) }
+    } else if (this.data.ongoingFeeding) {
+      const s = new Date(this.data.ongoingFeeding.startTime)
+      ongoing = { type: 'feeding', startTime: fmt(s), elapsedMin: Math.round((now - s) / 60000) }
+    }
+
+    let lastFeedingMinAgo = null
+    let lastFeedingStartMinAgo = null
+    let lastFeedingDurationMin = null
+    const lastFeeding = this._getLastCompletedFeeding(records) || this._lastCompletedFeedingRecord
+    if (lastFeeding) {
+      const start = this._toDate(lastFeeding.startTime)
+      const end = this._getCompletedFeedingEndTime(lastFeeding)
+      if (end) lastFeedingMinAgo = Math.round((now - end) / 60000)
+      if (start) lastFeedingStartMinAgo = Math.round((now - start) / 60000)
+      if (start && end) lastFeedingDurationMin = Math.max(0, Math.round((end - start) / 60000))
+    }
+
+    let lastSleepEndMinAgo = null
+    const lastSleep = [...records].filter(r => r.type === 'sleep' && r.status === 'completed' && r.endTime).sort((a, b) => new Date(b.endTime) - new Date(a.endTime))[0]
+    if (lastSleep) lastSleepEndMinAgo = Math.round((now - new Date(lastSleep.endTime)) / 60000)
+
+    const plan = this.data.feedingPlan
+    const nextPlanItem = plan && plan.planItems ? plan.planItems.find(item => item.state === 'next') : null
+    const nextPlanTime = this._toDate(nextPlanItem && nextPlanItem.time)
+    const nextPlannedMinutesFromNow = nextPlanTime ? Math.max(0, Math.round((nextPlanTime - now) / 60000)) : null
+    const planContext = plan ? {
+      targetCount: plan.targetCount,
+      amount: plan.amount,
+      completedCount: plan.completedCount,
+      remainingCount: plan.remainingCount,
+      nextPlannedTime: plan.nextTimeLabel || '',
+      nextPlannedMinutesFromNow,
+      nextPlannedSource: 'client_local_plan'
+    } : null
+
+    const pattern = this._recentPattern || null
+    const careFacts = this._buildCareFacts(records, now, {
+      pattern,
+      lastSleepEndMinAgo,
+      lastFeedingMinAgo,
+      lastFeedingStartMinAgo,
+      lastFeedingDurationMin,
+      nextPlannedMinutesFromNow,
+      nextPlannedTime: planContext && planContext.nextPlannedTime
+    })
+
+    return {
+      now: now.toISOString(),
+      nowLocalTime: fmt(now),
+      timezoneOffsetMinutes: -now.getTimezoneOffset(),
+      babyAgeMonths,
+      todayFeedings,
+      todaySleeps,
+      todayDiapers,
+      ongoing,
+      lastFeedingMinAgo,
+      lastFeedingStartMinAgo,
+      lastFeedingDurationMin,
+      lastFeedingReference: 'end',
+      lastSleepEndMinAgo,
+      careFacts,
+      plan: planContext,
+      pattern,
+      factText: this._updateAssistantFactText(now),
+      todos: this._assistantTodoContext || null
+    }
+  },
+
+  async _calcRecentPattern() {
+    if (this._recentPattern && this._recentPatternDate === new Date().toDateString()) return
+    try {
+      const app = getApp()
+      const config = normalizeFeedingPlanConfig((app && app.globalData && app.globalData.config) || {})
+      const dayStartHour = config.feedingDayStartHour
+      const now = new Date()
+      const threeStart = new Date(getLogicalDayStart(now, dayStartHour).getTime() - 3 * 86400000)
+      const todayEnd = new Date(getLogicalDayStart(now, dayStartHour).getTime() + 86400000)
+
+      const res = await db.getRecordsOverlappingDateRange(threeStart, todayEnd, { lookbackDays: 5, limit: 300 })
+      const records = (res.data || []).filter(r => {
+        const t = new Date(r.startTime).getTime()
+        return t >= threeStart.getTime() && t < getLogicalDayStart(now, dayStartHour).getTime()
+      })
+
+      const feedings = records.filter(r => r.type === 'feeding' && r.status === 'completed')
+      const sleeps = records.filter(r => r.type === 'sleep' && r.status === 'completed' && r.endTime)
+
+      let avgFeedingIntervalMin = null
+      if (feedings.length >= 4) {
+        const times = feedings.map(r => new Date(r.startTime).getTime()).sort()
+        let totalGap = 0
+        for (let i = 1; i < times.length; i++) totalGap += times[i] - times[i - 1]
+        avgFeedingIntervalMin = Math.round(totalGap / (times.length - 1) / 60000)
+      }
+
+      let avgSleepDurationMin = null
+      let avgDailySleepMin = null
+      if (sleeps.length >= 2) {
+        const totalMin = sleeps.reduce((sum, r) => sum + (new Date(r.endTime) - new Date(r.startTime)) / 60000, 0)
+        avgSleepDurationMin = Math.round(totalMin / sleeps.length)
+      }
+
+      if (sleeps.length >= 1) {
+        const dailySleepMap = {}
+        sleeps.forEach(r => {
+          const start = this._toDate(r.startTime)
+          const end = this._toDate(r.endTime)
+          if (!start || !end || end <= start) return
+          const dateStr = getLogicalDateStr(start, dayStartHour)
+          dailySleepMap[dateStr] = (dailySleepMap[dateStr] || 0) + Math.round((end - start) / 60000)
+        })
+        const totals = Object.keys(dailySleepMap).map(key => dailySleepMap[key])
+        if (totals.length) {
+          avgDailySleepMin = Math.round(totals.reduce((sum, value) => sum + value, 0) / totals.length)
+        }
+      }
+
+      let avgNapCount = null
+      if (sleeps.length >= 1) {
+        avgNapCount = Math.round(sleeps.length / 3)
+      }
+
+      let avgDailyAmountMl = null
+      if (feedings.length >= 1) {
+        const totalMl = feedings.reduce((sum, r) => sum + ((r.data && r.data.amount) || 0), 0)
+        avgDailyAmountMl = Math.round(totalMl / 3)
+      }
+
+      let samePeriodSleepPattern = null
+      if (sleeps.length >= 1) {
+        const currentMinute = this._getMinuteOfDay(now)
+        const sleepInfos = sleeps
+          .map(r => {
+            const start = this._toDate(r.startTime)
+            const end = this._toDate(r.endTime)
+            if (!start || !end || end <= start) return null
+            return {
+              record: r,
+              start,
+              end,
+              startMinute: this._getMinuteOfDay(start),
+              dateStr: getLogicalDateStr(start, dayStartHour)
+            }
+          })
+          .filter(Boolean)
+          .sort((a, b) => a.start - b.start)
+
+        const completedByDay = {}
+        sleepInfos.forEach(item => {
+          completedByDay[item.dateStr] = completedByDay[item.dateStr] || []
+          completedByDay[item.dateStr].push(item)
+        })
+
+        const samePeriod = sleepInfos
+          .map(item => {
+            const diff = Math.abs(item.startMinute - currentMinute)
+            return { ...item, clockDiffMin: Math.min(diff, 1440 - diff) }
+          })
+          .filter(item => item.clockDiffMin <= 120)
+
+        if (samePeriod.length) {
+          const awakeBeforeValues = []
+          samePeriod.forEach(item => {
+            const daySleeps = completedByDay[item.dateStr] || []
+            const prev = daySleeps
+              .filter(s => s.end < item.start)
+              .sort((a, b) => b.end - a.end)[0]
+            if (prev) awakeBeforeValues.push(Math.round((item.start - prev.end) / 60000))
+          })
+          const avgStartMinute = Math.round(samePeriod.reduce((sum, item) => sum + item.startMinute, 0) / samePeriod.length)
+          samePeriodSleepPattern = {
+            sampleCount: samePeriod.length,
+            usualSleepStartTime: this._formatClockFromMinute(avgStartMinute),
+            minutesFromUsualStart: Math.round(currentMinute - avgStartMinute),
+            avgAwakeBeforeSleepMin: awakeBeforeValues.length
+              ? Math.round(awakeBeforeValues.reduce((sum, value) => sum + value, 0) / awakeBeforeValues.length)
+              : null
+          }
+        }
+      }
+
+      this._recentPattern = {
+        avgSleepDurationMin,
+        avgDailySleepMin,
+        avgFeedingIntervalMin,
+        avgNapCount,
+        avgDailyAmountMl,
+        samePeriodSleepPattern
+      }
+      this._recentPatternDate = now.toDateString()
+    } catch (e) {
+      console.warn('计算近期规律失败', e)
     }
   }
 })

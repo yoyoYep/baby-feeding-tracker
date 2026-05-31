@@ -1,4 +1,5 @@
 const db = require('../../utils/db')
+const localReminders = require('../../utils/local-reminders')
 
 Page({
   data: {
@@ -16,7 +17,8 @@ Page({
     defaultAmountText: '',
     feedingPlanCountText: '',
     feedingQuietText: '',
-    feedingMinIntervalText: ''
+    feedingMinIntervalText: '',
+    localReminderEnabled: false
   },
 
   onShow() {
@@ -43,7 +45,8 @@ Page({
       defaultAmountText: amount ? `${amount}ml` : '未设置',
       feedingPlanCountText: `${config.feedingDailyTargetCount}顿/天`,
       feedingQuietText: config.feedingQuietEnabled ? `${config.feedingQuietStart}-${config.feedingQuietEnd}` : '关闭',
-      feedingMinIntervalText: this._formatMinutes(config.feedingMinInterval)
+      feedingMinIntervalText: this._formatMinutes(config.feedingMinInterval),
+      localReminderEnabled: config.localReminderEnabled === true
     })
   },
 
@@ -147,6 +150,24 @@ Page({
         wx.showToast({ title: '已设置', icon: 'success' })
       }
     })
+  },
+
+  async toggleLocalReminder(e) {
+    const enabled = e.detail.value === true
+    try {
+      const config = await db.saveConfig({ localReminderEnabled: enabled })
+      getApp().globalData.config = config
+      this.setData({ localReminderEnabled: enabled })
+      if (enabled) {
+        localReminders.startForegroundReminderLoop()
+        localReminders.checkForegroundReminders()
+      }
+      wx.showToast({ title: enabled ? '到点提醒已开启' : '到点提醒已关闭', icon: 'success' })
+    } catch (err) {
+      console.error('保存到点提醒开关失败:', err)
+      this.setData({ localReminderEnabled: !enabled })
+      wx.showToast({ title: '设置失败', icon: 'none' })
+    }
   },
 
   async loadFamilyInfo() {

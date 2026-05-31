@@ -2,6 +2,8 @@
 miniprogram/config.js
 cloudfunctions/speechToText/secret.js
 cloudfunctions/parseRecord/secret.js
+cloudfunctions/babyAssistant/secret.js
+cloudfunctions/textToSpeech/secret.js
 
 # 微信开发者工具
 project.config.json
