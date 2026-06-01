@@ -8,6 +8,10 @@ const MIN_BLOCK_HEIGHT_RPX = 58
 const POINT_HEIGHT_RPX = 78
 const POINT_GAP_RPX = 12
 const MAX_LANES = 2
+const FIXED_DURATION_LANES = {
+  sleep: 0,
+  feeding: 1
+}
 
 const TYPE_META = {
   feeding: { title: '喂奶', icon: '🍼' },
@@ -73,6 +77,10 @@ function formatDuration(minutes) {
   return m > 0 ? `${h}小时${m}分钟` : `${h}小时`
 }
 
+function isFixedDurationType(type) {
+  return Object.prototype.hasOwnProperty.call(FIXED_DURATION_LANES, type)
+}
+
 function getRecordStart(record) {
   return toDate(record && record.startTime)
 }
@@ -90,7 +98,7 @@ function getRecordEnd(record, now = new Date()) {
     return now.getTime() > start.getTime() ? now : start
   }
 
-  if (record.type === 'bath' && record.data && record.data.duration) {
+  if ((record.type === 'bath' || isFixedDurationType(record.type)) && record.data && record.data.duration) {
     const minutes = parseInt(record.data.duration, 10)
     if (minutes > 0) {
       return new Date(start.getTime() + minutes * 60000)
@@ -373,7 +381,7 @@ function getDetailLines(record, context = {}) {
   return lines
 }
 
-function assignLanes(items) {
+function assignDynamicLanes(items) {
   const laneEnds = []
   const sorted = [...items].sort((a, b) => a.startMinute - b.startMinute || a.endMinute - b.endMinute)
 
@@ -390,6 +398,59 @@ function assignLanes(items) {
     item.laneLeftPct = Math.round((item.lane * 100 / laneCount) * 100) / 100
     item.laneWidthPct = Math.round((100 / laneCount) * 100) / 100
   })
+}
+
+function getItemDisplayEndMinute(item) {
+  if (item.endMinute > item.startMinute) return item.endMinute
+  return item.startMinute + Math.ceil(MIN_BLOCK_HEIGHT_RPX / HOUR_HEIGHT_RPX * 60)
+}
+
+function laneHasVisualOverlap(intervals, item) {
+  const start = item.startMinute
+  const end = getItemDisplayEndMinute(item)
+  return intervals.some(interval => start < interval.end && end > interval.start)
+}
+
+function pushLaneInterval(intervals, item) {
+  intervals.push({
+    start: item.startMinute,
+    end: getItemDisplayEndMinute(item)
+  })
+}
+
+function assignFixedTypeLanes(items) {
+  const laneIntervals = [[], []]
+
+  items.forEach(item => {
+    if (!isFixedDurationType(item.type)) return
+    item.lane = FIXED_DURATION_LANES[item.type]
+    pushLaneInterval(laneIntervals[item.lane], item)
+  })
+
+  const floating = items
+    .filter(item => !isFixedDurationType(item.type))
+    .sort((a, b) => a.startMinute - b.startMinute || a.endMinute - b.endMinute)
+
+  floating.forEach(item => {
+    let lane = laneIntervals.findIndex(intervals => !laneHasVisualOverlap(intervals, item))
+    if (lane < 0) lane = 0
+    item.lane = lane
+    pushLaneInterval(laneIntervals[lane], item)
+  })
+
+  items.forEach(item => {
+    item.laneLeftPct = item.lane * 50
+    item.laneWidthPct = 50
+  })
+}
+
+function assignLanes(items) {
+  if (items.some(item => isFixedDurationType(item.type))) {
+    assignFixedTypeLanes(items)
+    return
+  }
+
+  assignDynamicLanes(items)
 }
 
 function avoidPointOverlap(items) {
@@ -475,7 +536,8 @@ function buildTimelineLayout(records, options = {}) {
       isClippedEnd: end.getTime() > dayEnd.getTime()
     }
 
-    if (endMinute > startMinute) {
+    const shouldUseDurationTrack = endMinute > startMinute || isFixedDurationType(record.type)
+    if (shouldUseDurationTrack) {
       const rawHeight = (endMinute - startMinute) / 60 * HOUR_HEIGHT_RPX
       const topRpx = minuteToTopRpx(endMinute, visibleEndMinute, visibleStartMinute)
       const maxHeight = baseDayHeightRpx - topRpx
@@ -485,7 +547,7 @@ function buildTimelineLayout(records, options = {}) {
         endMinute,
         topRpx,
         heightRpx: Math.max(1, Math.min(maxHeight, Math.max(MIN_BLOCK_HEIGHT_RPX, Math.round(rawHeight)))),
-        rangeText: `${formatClock(clippedStart)} - ${formatClock(clippedEnd)}`,
+        rangeText: endMinute > startMinute ? `${formatClock(clippedStart)} - ${formatClock(clippedEnd)}` : formatClock(clippedStart),
         detailTime: formatDetailTime(start, end),
         edgeText: base.isClippedStart ? '从前一天开始' : (base.isClippedEnd ? '延续到下一天' : '')
       })

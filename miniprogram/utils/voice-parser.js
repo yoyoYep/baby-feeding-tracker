@@ -1,5 +1,7 @@
-function resolveTime(timeStr) {
+function resolveTime(timeStr, contextText = '') {
   const now = new Date()
+  if (timeStr instanceof Date) return timeStr
+  timeStr = typeof timeStr === 'string' ? timeStr.replace(/：/g, ':').trim() : timeStr
 
   if (!timeStr || timeStr === 'now') return now
 
@@ -53,11 +55,27 @@ function resolveTime(timeStr) {
     return t
   }
 
-  // "25 07:00" → 当月25号7点
+  // "2026年5月28日 07:00" / "2026-5-28 07:00"
+  match = timeStr.match(/^(\d{4})\s*[年/-]\s*(\d{1,2})\s*[月/-]\s*(\d{1,2})\s*[号日]?\s+(\d{1,2}):(\d{2})$/)
+  if (match) {
+    return new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]), parseInt(match[4]), parseInt(match[5]), 0, 0)
+  }
+
+  // "5月28日 07:00"
+  match = timeStr.match(/^(\d{1,2})\s*月\s*(\d{1,2})\s*[号日]?\s+(\d{1,2}):(\d{2})$/)
+  if (match) {
+    return new Date(now.getFullYear(), parseInt(match[1]) - 1, parseInt(match[2]), parseInt(match[3]), parseInt(match[4]), 0, 0)
+  }
+
+  // "25 07:00" → 结合原文日期上下文；没有上下文时取最近的25号
   match = timeStr.match(/^(\d{1,2})\s+(\d{1,2}):(\d{2})$/)
   if (match) {
-    const t = new Date(now)
-    t.setDate(parseInt(match[1]))
+    const day = parseInt(match[1])
+    const t = contextText ? getBaseDateFromText(contextText, now) : getRecentDateByDay(day, now)
+    if (t.getDate() !== day) {
+      const recent = getRecentDateByDay(day, now)
+      t.setFullYear(recent.getFullYear(), recent.getMonth(), recent.getDate())
+    }
     t.setHours(parseInt(match[2]), parseInt(match[3]), 0, 0)
     return t
   }
@@ -67,8 +85,11 @@ function resolveTime(timeStr) {
   if (match) {
     const day = parseInt(match[1])
     if (day >= 1 && day <= 31) {
-      const t = new Date(now)
-      t.setDate(day)
+      const t = contextText ? getBaseDateFromText(contextText, now) : getRecentDateByDay(day, now)
+      if (t.getDate() !== day) {
+        const recent = getRecentDateByDay(day, now)
+        t.setFullYear(recent.getFullYear(), recent.getMonth(), recent.getDate())
+      }
       return t
     }
   }
@@ -91,6 +112,178 @@ function getFutureFeedingStartTime(text) {
   const target = parseTimeExpression(text)
   if (target.getTime() - Date.now() > 5000) return target
   return null
+}
+
+function formatParserLocalDateTime(date = new Date()) {
+  const y = date.getFullYear()
+  const mo = (date.getMonth() + 1).toString().padStart(2, '0')
+  const d = date.getDate().toString().padStart(2, '0')
+  const h = date.getHours().toString().padStart(2, '0')
+  const m = date.getMinutes().toString().padStart(2, '0')
+  const s = date.getSeconds().toString().padStart(2, '0')
+  return `${y}-${mo}-${d} ${h}:${m}:${s}`
+}
+
+function getRecentDateByDay(day, now = new Date()) {
+  const date = new Date(now.getFullYear(), now.getMonth(), day)
+  date.setHours(0, 0, 0, 0)
+  if (date.getTime() > now.getTime()) {
+    date.setMonth(date.getMonth() - 1)
+  }
+  return date
+}
+
+function getBaseDateFromText(text, now = new Date()) {
+  const normalized = text.replace(/：/g, ':')
+  let match = normalized.match(/(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*[号日]?/)
+  if (match) {
+    return new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]))
+  }
+
+  match = normalized.match(/(\d{1,2})\s*月\s*(\d{1,2})\s*[号日]?/)
+  if (match) {
+    return new Date(now.getFullYear(), parseInt(match[1]) - 1, parseInt(match[2]))
+  }
+
+  match = normalized.match(/(\d{1,2})\s*[号日]/)
+  if (match) {
+    return getRecentDateByDay(parseInt(match[1]), now)
+  }
+
+  if (/前天/.test(normalized)) {
+    const date = new Date(now)
+    date.setDate(date.getDate() - 2)
+    return date
+  }
+
+  if (/昨[天日晚]/.test(normalized)) {
+    const date = new Date(now)
+    date.setDate(date.getDate() - 1)
+    return date
+  }
+
+  return new Date(now)
+}
+
+function getDateFromSegment(segment, fallbackDate, now = new Date()) {
+  if (!segment) return new Date(fallbackDate)
+  if (/(\d{4})\s*年|(\d{1,2})\s*月|(\d{1,2})\s*[号日]|今天|昨天|前天/.test(segment)) {
+    return getBaseDateFromText(segment, now)
+  }
+  return new Date(fallbackDate)
+}
+
+function getPeriodHint(segment) {
+  const match = (segment || '').match(/凌晨|早上|上午|中午|下午|晚上|傍晚/)
+  return match ? match[0] : ''
+}
+
+function normalizeClockHour(rawHour, period) {
+  const text = String(rawHour || '')
+  let hour = parseInt(text, 10)
+  if (hour > 23 && text.length === 3 && text.endsWith('0')) {
+    hour = parseInt(text.slice(0, 2), 10)
+  }
+
+  if ((period === '下午' || period === '晚上' || period === '傍晚') && hour < 12) {
+    hour += 12
+  } else if (period === '凌晨' && hour === 12) {
+    hour = 0
+  }
+
+  return hour
+}
+
+function parseDateTimeSegment(segment, fallbackDate, fallbackPeriod = '', now = new Date()) {
+  const normalized = (segment || '').replace(/：/g, ':')
+  const clockMatch = normalized.match(/(\d{1,3})\s*:\s*(\d{1,2})/) ||
+    normalized.match(/(\d{1,3})\s*[点时]\s*(?:(\d{1,2})\s*分?)?/)
+  if (!clockMatch) return null
+
+  const period = getPeriodHint(normalized) || fallbackPeriod
+  const hour = normalizeClockHour(clockMatch[1], period)
+  const minute = parseInt(clockMatch[2] || '0', 10)
+  if (!Number.isFinite(hour) || !Number.isFinite(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+    return null
+  }
+
+  const date = getDateFromSegment(normalized, fallbackDate, now)
+  date.setHours(hour, minute, 0, 0)
+  return date
+}
+
+function extractFeedingAmount(text) {
+  const normalized = text.replace(/毫升/g, 'ml').replace(/ML/gi, 'ml')
+  const mlMatch = normalized.match(/(\d+)\s*ml/)
+  if (mlMatch) return parseInt(mlMatch[1], 10)
+
+  const numberReg = /(\d+)/g
+  let match
+  while ((match = numberReg.exec(normalized)) !== null) {
+    const value = parseInt(match[1], 10)
+    const tail = normalized.slice(match.index + match[0].length)
+    if (/^\s*(分钟|分|小时|个小时|点|时|号|日|天|月|年|:|：)/.test(tail)) continue
+    if (value >= 30 && value <= 300) return value
+  }
+  return null
+}
+
+function parseTimeRanges(text, now = new Date()) {
+  const normalized = text.replace(/：/g, ':')
+  const datePart = '(?:今天|昨天|前天)?\\s*(?:\\d{4}\\s*年)?\\s*(?:\\d{1,2}\\s*月)?\\s*(?:\\d{1,2}\\s*[号日])?'
+  const periodPart = '(?:凌晨|早上|上午|中午|下午|晚上|傍晚)?'
+  const clockPart = '\\d{1,3}\\s*(?::|[点时])\\s*\\d{1,2}'
+  const rangeReg = new RegExp(`(${datePart}\\s*${periodPart}\\s*${clockPart})\\s*(?:到|至|[-~—])\\s*(${datePart}\\s*${periodPart}\\s*${clockPart})`, 'g')
+  const baseDate = getBaseDateFromText(normalized, now)
+  const ranges = []
+  let match
+
+  while ((match = rangeReg.exec(normalized)) !== null) {
+    const startText = match[1]
+    const endText = match[2]
+    const startPeriod = getPeriodHint(startText)
+    const start = parseDateTimeSegment(startText, baseDate, '', now)
+    const end = parseDateTimeSegment(endText, start || baseDate, getPeriodHint(endText) ? '' : startPeriod, now)
+    if (!start || !end) continue
+    if (end.getTime() <= start.getTime()) {
+      end.setDate(end.getDate() + 1)
+    }
+    ranges.push({ start, end })
+  }
+
+  return ranges
+}
+
+function buildBatchResult(records, confidence = 0.88) {
+  if (!records.length) return null
+  if (records.length === 1) return records[0]
+  return {
+    type: 'batch',
+    records,
+    status: 'completed',
+    confidence
+  }
+}
+
+function parseMultiFeedingText(text) {
+  const normalized = text.replace(/毫升/g, 'ml').replace(/ML/gi, 'ml')
+  if (!/(喂|喝|吃.*奶|奶.*ml|ml.*奶|冲奶|瓶)/.test(normalized)) return null
+
+  const ranges = parseTimeRanges(normalized)
+  if (!ranges.length) return null
+
+  const amount = extractFeedingAmount(normalized)
+  const records = ranges.map(range => ({
+    type: 'feeding',
+    data: { amount, action: 'complete' },
+    action: 'complete',
+    startTime: range.start,
+    endTime: range.end,
+    status: 'completed',
+    confidence: 0.88
+  }))
+
+  return buildBatchResult(records)
 }
 
 function parseBathText(text, confidence = 0.6) {
@@ -136,6 +329,67 @@ function canUseCloudParser() {
   }
 }
 
+function normalizeCloudParsedRecord(parsed, text, options = {}) {
+  if (!parsed || !parsed.type) return null
+
+  let startTime = resolveTime(parsed.startTime, text)
+  let endTime = null
+
+  if (parsed.endTime) {
+    endTime = resolveTime(parsed.endTime, text)
+  }
+
+  // 用 duration 修正时间
+  if (parsed.duration) {
+    const durationMs = parsed.duration * 60 * 1000
+    if (!endTime) {
+      // 没有 endTime，根据 startTime 是否为 "now" 决定方向
+      const startIsNow = !parsed.startTime || parsed.startTime === 'now'
+      if (startIsNow) {
+        endTime = new Date()
+        startTime = new Date(endTime.getTime() - durationMs)
+      } else {
+        endTime = new Date(startTime.getTime() + durationMs)
+      }
+    } else if (Math.abs(endTime - startTime) < 60000) {
+      // startTime 和 endTime 几乎相同（都解析成了 now），用 duration 倒推
+      endTime = new Date(Math.max(startTime.getTime(), endTime.getTime()))
+      startTime = new Date(endTime.getTime() - durationMs)
+    }
+  }
+
+  // 跨午夜修正：endTime 比 startTime 早，说明是跨天（如23:00→01:30）
+  if (startTime && endTime && endTime < startTime) {
+    const diffHours = (startTime - endTime) / (1000 * 60 * 60)
+    if (diffHours > 12) {
+      // endTime 在 startTime 之前超过12小时，把 startTime 往前推一天
+      startTime.setDate(startTime.getDate() - 1)
+    }
+  }
+
+  const action = (parsed.data && parsed.data.action) || parsed.action || null
+  const futureFeedingStart = options.allowFutureStart !== false && parsed.type === 'feeding' ? getFutureFeedingStartTime(text) : null
+
+  if (futureFeedingStart) {
+    startTime = futureFeedingStart
+    endTime = null
+    parsed.status = 'ongoing'
+    parsed.data = parsed.data || {}
+    parsed.data.action = 'start'
+    parsed.data.amount = null
+  }
+
+  return {
+    type: parsed.type,
+    data: parsed.data || {},
+    action: futureFeedingStart ? 'start' : action,
+    startTime,
+    endTime,
+    status: parsed.status || 'completed',
+    confidence: 0.95
+  }
+}
+
 async function parseVoiceText(text) {
   if (!text || text.trim() === '') return null
 
@@ -143,75 +397,36 @@ async function parseVoiceText(text) {
     try {
       const res = await wx.cloud.callFunction({
         name: 'parseRecord',
-        data: { text }
+        data: {
+          text,
+          now: new Date().toISOString(),
+          localNow: formatParserLocalDateTime(new Date()),
+          timezoneOffsetMinutes: new Date().getTimezoneOffset()
+        }
       })
 
       if (res.result && res.result.success) {
         const parsed = res.result.data
+
+        if (parsed.records && Array.isArray(parsed.records)) {
+          const records = parsed.records
+            .map(item => normalizeCloudParsedRecord(item, text, { allowFutureStart: false }))
+            .filter(Boolean)
+          if (records.length) return buildBatchResult(records, 0.95)
+        }
+
         const bathOverride = parseBathText(text, 0.95)
         if (bathOverride) return bathOverride
 
-        let startTime = resolveTime(parsed.startTime)
-        let endTime = null
-
-        if (parsed.endTime) {
-          endTime = resolveTime(parsed.endTime)
-        }
-
-        // 用 duration 修正时间
-        if (parsed.duration) {
-          const durationMs = parsed.duration * 60 * 1000
-          if (!endTime) {
-            // 没有 endTime，根据 startTime 是否为 "now" 决定方向
-            const startIsNow = !parsed.startTime || parsed.startTime === 'now'
-            if (startIsNow) {
-              endTime = new Date()
-              startTime = new Date(endTime.getTime() - durationMs)
-            } else {
-              endTime = new Date(startTime.getTime() + durationMs)
-            }
-          } else if (Math.abs(endTime - startTime) < 60000) {
-            // startTime 和 endTime 几乎相同（都解析成了 now），用 duration 倒推
-            endTime = new Date(Math.max(startTime.getTime(), endTime.getTime()))
-            startTime = new Date(endTime.getTime() - durationMs)
-          }
-        }
-
-        // 跨午夜修正：endTime 比 startTime 早，说明是跨天（如23:00→01:30）
-        if (startTime && endTime && endTime < startTime) {
-          const diffHours = (startTime - endTime) / (1000 * 60 * 60)
-          if (diffHours > 12) {
-            // endTime 在 startTime 之前超过12小时，把 startTime 往前推一天
-            startTime.setDate(startTime.getDate() - 1)
-          }
-        }
-
-        const action = (parsed.data && parsed.data.action) || parsed.action || null
-        const futureFeedingStart = parsed.type === 'feeding' ? getFutureFeedingStartTime(text) : null
-
-        if (futureFeedingStart) {
-          startTime = futureFeedingStart
-          endTime = null
-          parsed.status = 'ongoing'
-          parsed.data = parsed.data || {}
-          parsed.data.action = 'start'
-          parsed.data.amount = null
-        }
-
-        return {
-          type: parsed.type,
-          data: parsed.data || {},
-          action: futureFeedingStart ? 'start' : action,
-          startTime,
-          endTime,
-          status: parsed.status || 'completed',
-          confidence: 0.95
-        }
+        return normalizeCloudParsedRecord(parsed, text)
       }
     } catch (e) {
       console.warn('云函数解析失败，回退到本地解析', e)
     }
   }
+
+  const multiFeeding = parseMultiFeedingText(text)
+  if (multiFeeding) return multiFeeding
 
   return localParse(text)
 }
@@ -344,6 +559,11 @@ function localParse(text) {
 
 function getConfirmText(result) {
   if (!result) return '未能识别，请手动记录'
+
+  if (result.records && Array.isArray(result.records)) {
+    const lines = result.records.map((record, index) => `${index + 1}. ${getConfirmText(record)}`)
+    return `共 ${result.records.length} 条记录\n${lines.join('\n')}`
+  }
 
   const typeNames = {
     feeding: '喂奶', diaper: '换尿布', sleep: '睡眠',

@@ -115,6 +115,22 @@
 
     <view class="card">
       <view class="card-header">
+        <view class="card-icon feeding-duration-icon">⏱</view>
+        <text class="card-title">平均喂奶耗时 (min)</text>
+      </view>
+      <view class="chart-bar-group">
+        <view wx:for="{{weekFeedingDuration}}" wx:key="label" class="chart-bar-item">
+          <text class="chart-bar-value">{{item.value || ''}}</text>
+          <view class="chart-bar-track">
+            <view class="chart-bar feeding-duration-bar" style="height: {{item.percent}}%"></view>
+          </view>
+          <text class="chart-bar-label">{{item.label}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="card-header">
         <view class="card-icon sleep-icon">💤</view>
         <text class="card-title">睡眠时长趋势 (h)</text>
       </view>

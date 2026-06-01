@@ -148,11 +148,12 @@
 .confirm-content {
   font-size: 32rpx;
   color: #222;
-  text-align: center;
+  text-align: left;
   padding: 30rpx 20rpx;
   background: #FFF0F0;
   border-radius: 12rpx;
   margin-bottom: 20rpx;
+  white-space: pre-wrap;
 }
 
 .confirm-raw {
@@ -164,6 +165,88 @@
 
 .raw-label {
   color: #bbb;
+}
+
+.batch-dialog {
+  width: 88%;
+  max-height: 82vh;
+  box-sizing: border-box;
+}
+
+.batch-editor-list {
+  max-height: 58vh;
+  margin-bottom: 26rpx;
+}
+
+.batch-edit-card {
+  padding: 22rpx;
+  border-radius: 16rpx;
+  background: #FFF7F7;
+  margin-bottom: 18rpx;
+}
+
+.batch-edit-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #222;
+  margin-bottom: 18rpx;
+}
+
+.batch-edit-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16rpx;
+}
+
+.batch-field {
+  min-width: 0;
+}
+
+.batch-field.full {
+  margin-top: 16rpx;
+  grid-column: 1 / -1;
+}
+
+.batch-label {
+  display: block;
+  font-size: 22rpx;
+  color: #888;
+  margin-bottom: 8rpx;
+}
+
+.batch-picker,
+.batch-input {
+  min-height: 62rpx;
+  box-sizing: border-box;
+  padding: 14rpx 16rpx;
+  border-radius: 10rpx;
+  background: #fff;
+  color: #222;
+  font-size: 26rpx;
+  line-height: 1.25;
+}
+
+.batch-segments {
+  display: flex;
+  gap: 12rpx;
+}
+
+.batch-segment {
+  flex: 1;
+  min-height: 58rpx;
+  border-radius: 10rpx;
+  background: #fff;
+  color: #777;
+  font-size: 24rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.batch-segment.active {
+  background: #FF9AA2;
+  color: #fff;
+  font-weight: 600;
 }
 
 .confirm-btns {

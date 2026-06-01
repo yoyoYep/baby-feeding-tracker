@@ -15,7 +15,7 @@
   </view>
 
   <!-- 识别/解析中加载态 -->
-  <view wx:if="{{parsing}}" class="parsing-mask">
+  <view wx:if="{{parsing}}" class="parsing-mask" catchtouchmove="noop">
     <view class="parsing-dialog">
       <view class="parsing-spinner"></view>
       <text class="parsing-text">{{parsingText}}</text>
@@ -23,8 +23,8 @@
   </view>
 
   <!-- 识别结果确认弹窗 -->
-  <view wx:if="{{showConfirm}}" class="confirm-mask" bindtap="cancelConfirm">
-    <view class="confirm-dialog" catchtap="">
+  <view wx:if="{{showConfirm}}" class="confirm-mask" catchtouchmove="noop">
+    <view class="confirm-dialog" catchtap="noop">
       <view class="confirm-title">识别结果</view>
       <view class="confirm-content">{{confirmText}}</view>
       <view class="confirm-raw" wx:if="{{rawText}}">
@@ -33,8 +33,116 @@
       </view>
       <view class="confirm-btns">
         <button class="confirm-btn cancel" bindtap="cancelConfirm">取消</button>
-        <button class="confirm-btn edit" bindtap="editRecord">编辑</button>
+        <button wx:if="{{canEditConfirm}}" class="confirm-btn edit" bindtap="editRecord">编辑</button>
         <button class="confirm-btn ok" bindtap="confirmRecord">确认</button>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{showBatchEditor}}" class="confirm-mask" catchtouchmove="noop">
+    <view class="confirm-dialog batch-dialog" catchtap="noop">
+      <view class="confirm-title">编辑记录</view>
+      <scroll-view scroll-y class="batch-editor-list">
+        <view class="batch-edit-card" wx:for="{{editingRecords}}" wx:key="editKey">
+          <view class="batch-edit-title">{{index + 1}}. {{item.typeTitle}}</view>
+          <view class="batch-edit-grid">
+            <view class="batch-field">
+              <text class="batch-label">日期</text>
+              <picker mode="date" value="{{item.dateStr}}" data-index="{{index}}" bindchange="onBatchDateChange">
+                <view class="batch-picker">{{item.dateStr}}</view>
+              </picker>
+            </view>
+            <view class="batch-field">
+              <text class="batch-label">开始</text>
+              <picker mode="time" value="{{item.startTimeStr}}" data-index="{{index}}" bindchange="onBatchStartTimeChange">
+                <view class="batch-picker">{{item.startTimeStr}}</view>
+              </picker>
+            </view>
+            <view class="batch-field" wx:if="{{item.hasEndTime}}">
+              <text class="batch-label">结束日期</text>
+              <picker mode="date" value="{{item.endDateStr}}" data-index="{{index}}" bindchange="onBatchEndDateChange">
+                <view class="batch-picker">{{item.endDateStr}}</view>
+              </picker>
+            </view>
+            <view class="batch-field" wx:if="{{item.hasEndTime}}">
+              <text class="batch-label">结束</text>
+              <picker mode="time" value="{{item.endTimeStr}}" data-index="{{index}}" bindchange="onBatchEndTimeChange">
+                <view class="batch-picker">{{item.endTimeStr}}</view>
+              </picker>
+            </view>
+          </view>
+
+          <view wx:if="{{item.type === 'feeding'}}" class="batch-field full">
+            <text class="batch-label">奶量 ml</text>
+            <input class="batch-input" type="number" value="{{item.amountText}}" data-index="{{index}}" bindinput="onBatchAmountInput" />
+          </view>
+
+          <view wx:if="{{item.type === 'diaper'}}" class="batch-field full">
+            <text class="batch-label">尿片类型</text>
+            <view class="batch-segments">
+              <view class="batch-segment {{item.data.subType === 'pee' ? 'active' : ''}}" data-index="{{index}}" data-val="pee" bindtap="onBatchDiaperType">小便</view>
+              <view class="batch-segment {{item.data.subType === 'poop' ? 'active' : ''}}" data-index="{{index}}" data-val="poop" bindtap="onBatchDiaperType">大便</view>
+              <view class="batch-segment {{item.data.subType === 'mixed' ? 'active' : ''}}" data-index="{{index}}" data-val="mixed" bindtap="onBatchDiaperType">大小便</view>
+            </view>
+          </view>
+
+          <view wx:if="{{item.type === 'health_temp'}}" class="batch-field full">
+            <text class="batch-label">体温 °C</text>
+            <input class="batch-input" type="digit" value="{{item.tempText}}" data-index="{{index}}" bindinput="onBatchTempInput" />
+          </view>
+
+          <view wx:if="{{item.type === 'health_med'}}" class="batch-edit-grid">
+            <view class="batch-field">
+              <text class="batch-label">药品</text>
+              <input class="batch-input" value="{{item.data.name}}" data-index="{{index}}" bindinput="onBatchMedNameInput" />
+            </view>
+            <view class="batch-field">
+              <text class="batch-label">剂量</text>
+              <input class="batch-input" type="digit" value="{{item.dosageText}}" data-index="{{index}}" bindinput="onBatchDosageInput" />
+            </view>
+          </view>
+
+          <view wx:if="{{item.type === 'supplement'}}" class="batch-edit-grid">
+            <view class="batch-field">
+              <text class="batch-label">食物</text>
+              <input class="batch-input" value="{{item.foodText}}" data-index="{{index}}" bindinput="onBatchFoodInput" />
+            </view>
+            <view class="batch-field">
+              <text class="batch-label">食用量</text>
+              <input class="batch-input" value="{{item.foodAmountText}}" data-index="{{index}}" bindinput="onBatchFoodAmountInput" />
+            </view>
+          </view>
+
+          <view wx:if="{{item.type === 'bath'}}" class="batch-edit-grid">
+            <view class="batch-field">
+              <text class="batch-label">水温 °C</text>
+              <input class="batch-input" type="digit" value="{{item.bathWaterTempText}}" data-index="{{index}}" bindinput="onBatchBathWaterTempInput" />
+            </view>
+            <view class="batch-field">
+              <text class="batch-label">时长 min</text>
+              <input class="batch-input" type="number" value="{{item.bathDurationText}}" data-index="{{index}}" bindinput="onBatchBathDurationInput" />
+            </view>
+          </view>
+
+          <view wx:if="{{item.type === 'growth'}}" class="batch-edit-grid">
+            <view class="batch-field">
+              <text class="batch-label">体重 kg</text>
+              <input class="batch-input" type="digit" value="{{item.growthWeightText}}" data-index="{{index}}" bindinput="onBatchGrowthWeightInput" />
+            </view>
+            <view class="batch-field">
+              <text class="batch-label">身高 cm</text>
+              <input class="batch-input" type="digit" value="{{item.growthHeightText}}" data-index="{{index}}" bindinput="onBatchGrowthHeightInput" />
+            </view>
+            <view class="batch-field full">
+              <text class="batch-label">头围 cm</text>
+              <input class="batch-input" type="digit" value="{{item.growthHcText}}" data-index="{{index}}" bindinput="onBatchGrowthHcInput" />
+            </view>
+          </view>
+        </view>
+      </scroll-view>
+      <view class="confirm-btns">
+        <button class="confirm-btn cancel" bindtap="cancelBatchEditor">取消</button>
+        <button class="confirm-btn ok" bindtap="confirmBatchEditor">保存修改</button>
       </view>
     </view>
   </view>

@@ -15,9 +15,14 @@
           <text class="baby-name">{{babyName || '宝宝'}}</text>
           <text class="baby-age" wx:if="{{babyAgeText}}">{{babyAgeText}}</text>
         </view>
-        <picker mode="date" value="{{currentDateStr}}" bindchange="onDatePick">
-          <view class="date-text">{{dateLabel}}</view>
-        </picker>
+        <view class="date-action-row">
+          <picker mode="date" value="{{currentDateStr}}" bindchange="onDatePick">
+            <view class="date-text">{{dateLabel}}</view>
+          </picker>
+          <view class="timeline-entry-btn" bindtap="goTimeline" hover-class="timeline-entry-btn-hover" aria-label="记录时间轴">
+            <text class="timeline-entry-icon">🕘</text>
+          </view>
+        </view>
       </view>
       <view class="date-arrow {{isToday ? 'disabled' : ''}}" bindtap="nextDay">›</view>
       <view wx:if="{{!isToday}}" class="back-today" bindtap="goToday">回到今天</view>
@@ -176,10 +181,22 @@
   <!-- 日期选择 + 时间线 -->
   <view class="card timeline-card">
     <view class="card-header">
-      <text class="record-count">{{timeline.length}}条记录</text>
+      <text class="record-count">{{recordCountText}}</text>
     </view>
+    <scroll-view scroll-x class="record-filter-scroll" show-scrollbar="{{false}}">
+      <view class="record-filter-row">
+        <view
+          wx:for="{{recordFilterOptions}}"
+          wx:key="key"
+          class="record-filter-chip {{recordFilter === item.key ? 'active' : ''}}"
+          data-filter="{{item.key}}"
+          bindtap="setRecordFilter">
+          <text>{{item.label}}</text>
+        </view>
+      </view>
+    </scroll-view>
     <view wx:if="{{timeline.length === 0}}" class="empty-tip">
-      <text>{{isToday ? '还没有记录，试试语音快速添加吧~' : '当天没有记录'}}</text>
+      <text>{{timelineEmptyText}}</text>
     </view>
     <view wx:else>
       <timeline-item wx:for="{{timeline}}" wx:key="_id" item="{{item}}" bind:more="onTimelineItemMore" bind:delete="onSwipeDelete" />

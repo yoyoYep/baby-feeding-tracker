@@ -87,6 +87,8 @@ assert(!!feeding && feeding.topRpx === Math.round((24 * 60 - 8 * 60 - 22) / 60 *
 assert(!!feeding && feeding.desc.includes('120ml') && feeding.desc.includes('22分钟'), '喂奶显示奶量和时长')
 assert(!!feeding && feeding.displayText === '喂奶', '时段卡片只显示操作名')
 assert(!!feeding && feeding.detailLines.some(line => line.label === '奶量' && line.value === '120ml'), '详细数据放入只读弹窗字段')
+assert(!!sleep && sleep.laneLeftPct === 0 && sleep.laneWidthPct === 50, '睡眠固定显示在连续区左列')
+assert(!!feeding && feeding.laneLeftPct === 50 && feeding.laneWidthPct === 50, '喂奶固定显示在连续区右列')
 assert(!!diaper && diaper.timeStr === '09:15' && diaper.desc === '小便', '点状记录显示时间和描述')
 assert(!!diaper && diaper.displayText === '换尿布', '非用药点状卡片只显示操作名')
 assert(!!bath && bath.rangeText === '18:30 - 18:40', '洗澡 duration 字段按时间段展示')
@@ -103,6 +105,26 @@ const medLayout = buildTimelineLayout([{
 const med = medLayout.pointItems[0]
 assert(med.displayText === '维生素D', '用药卡片只显示药品名')
 assert(med.detailLines.some(line => line.label === '剂量' && line.value === '1滴'), '用药剂量进入详情字段')
+
+const fixedInstantLayout = buildTimelineLayout([
+  {
+    _id: 'sleep_instant',
+    type: 'sleep',
+    startTime: new Date('2026-05-29T11:00:00+08:00'),
+    status: 'completed'
+  },
+  {
+    _id: 'feeding_instant',
+    type: 'feeding',
+    startTime: new Date('2026-05-29T11:30:00+08:00'),
+    data: { amount: 90 },
+    status: 'completed'
+  }
+], { dayStart, dayEnd, now })
+const instantSleep = fixedInstantLayout.durationItems.find(item => item._id === 'sleep_instant')
+const instantFeeding = fixedInstantLayout.durationItems.find(item => item._id === 'feeding_instant')
+assert(!!instantSleep && !!instantFeeding && fixedInstantLayout.pointItems.length === 0, '无持续时间的睡眠和喂奶也进入连续区')
+assert(instantSleep.laneLeftPct === 0 && instantFeeding.laneLeftPct === 50, '无持续时间的睡眠/喂奶仍按固定左右列展示')
 
 console.log('\n=== 今日倒序可视范围 ===')
 

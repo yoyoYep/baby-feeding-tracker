@@ -3,9 +3,32 @@ const { getPercentile } = require('../../utils/growth-standard')
 const { buildFeedingPlan, normalizeFeedingPlanConfig, getLogicalDayStart, getLogicalDateStr, isSameLogicalDay } = require('../../utils/feeding-plan')
 const { getFeedingReminderKey, getTodoReminderKey, getSnoozeCountdownText, buildLogicalDateTime, formatTodoReminderText, isTodoCancelled } = require('../../utils/local-reminders')
 const { matchesTodoDate } = require('../../utils/todo-schedule')
+const { applyOngoingAssistantStatus } = require('../../utils/assistant-display')
 
 const DELAYED_FEEDING_KEY = 'delayed_feeding_start'
 const DELAYED_START_MIN_MS = 5000
+const RECORD_FILTER_OPTIONS = [
+  { key: 'all', label: '全部' },
+  { key: 'feeding', label: '喂奶' },
+  { key: 'sleep', label: '睡眠' },
+  { key: 'diaper', label: '尿布' },
+  { key: 'supplement', label: '辅食' },
+  { key: 'bath', label: '洗澡' },
+  { key: 'health', label: '健康' },
+  { key: 'growth', label: '生长' }
+]
+const HEALTH_RECORD_TYPES = {
+  health_temp: true,
+  health_med: true,
+  health_vaccine: true,
+  health_custom: true
+}
+
+function isRecordMatchedByFilter(record, filter) {
+  if (!record || !filter || filter === 'all') return true
+  if (filter === 'health') return !!HEALTH_RECORD_TYPES[record.type]
+  return record.type === filter
+}
 
 Page({
   data: {
@@ -42,6 +65,11 @@ Page({
     delayedFeeding: null,
     delayedFeedingLeft: '',
     timeline: [],
+    timelineTotalCount: 0,
+    recordCountText: '0条记录',
+    recordFilter: 'all',
+    recordFilterOptions: RECORD_FILTER_OPTIONS,
+    timelineEmptyText: '还没有记录，试试语音快速添加吧~',
     showActions: false,
     showHealthForm: false,
     healthEditId: '',
@@ -205,10 +233,11 @@ Page({
       const records = merged.filter(r => this._recordOverlapsRange(r, start, end))
 
       const stats = this._calcStats(records, start, end)
-      const timeline = this._formatTimeline(records, start, end)
+      const timelineData = this._buildTimelineData(records, start, end)
 
       this._dayRecords = records
-      this.setData({ todayStats: stats, timeline })
+      this._timelineRange = { start, end }
+      this.setData({ todayStats: stats, ...timelineData })
     } catch (e) {
       console.error('加载数据失败:', e)
     }
@@ -386,6 +415,23 @@ Page({
       return new Date(Math.min(recordEnd.getTime(), end.getTime()))
     }
     return recordStart
+  },
+
+  _getTimelineEmptyText(filter = this.data.recordFilter) {
+    if (filter && filter !== 'all') return '当天没有这类记录'
+    return this.data.isToday ? '还没有记录，试试语音快速添加吧~' : '当天没有记录'
+  },
+
+  _buildTimelineData(records, start, end, filter = this.data.recordFilter) {
+    const totalCount = (records || []).filter(r => this._recordOverlapsRange(r, start, end)).length
+    const filteredRecords = (records || []).filter(record => isRecordMatchedByFilter(record, filter))
+    const timeline = this._formatTimeline(filteredRecords, start, end)
+    return {
+      timeline,
+      timelineTotalCount: totalCount,
+      recordCountText: filter === 'all' ? `${totalCount}条记录` : `${timeline.length}/${totalCount}条记录`,
+      timelineEmptyText: this._getTimelineEmptyText(filter)
+    }
   },
 
   _calcStats(records, start, end) {
@@ -583,6 +629,60 @@ Page({
       this.setData({ successNotice: '' })
       this._successNoticeTimer = null
     }, 2200)
+  },
+
+  _showRecordSaveError(err, fallback = '记录失败') {
+    if (db.isRecordOverlapError && db.isRecordOverlapError(err)) {
+      wx.showModal({
+        title: '输入存在问题',
+        content: db.getRecordOverlapErrorContent(err),
+        showCancel: false,
+        confirmText: '知道了',
+        confirmColor: '#FF9AA2'
+      })
+      return
+    }
+    wx.showToast({ title: fallback, icon: 'none' })
+  },
+
+  async _saveVoiceBatchRecords(records = []) {
+    const validRecords = records.filter(Boolean)
+    if (!validRecords.length) return
+
+    let savedCount = 0
+    try {
+      for (const record of validRecords) {
+        const data = { ...(record.data || {}) }
+        delete data.action
+        if (record.type === 'feeding' && !data.amount) {
+          const defaultAmount = getApp().globalData.config && getApp().globalData.config.defaultFeedingAmount
+          if (defaultAmount) data.amount = defaultAmount
+        }
+
+        await db.addRecord({
+          type: record.type,
+          startTime: record.startTime,
+          endTime: record.endTime || null,
+          data,
+          status: record.status || 'completed',
+          source: 'voice'
+        })
+
+        if (record.type === 'health_med' && data.name) {
+          await db.updateMedHistory(data)
+        }
+        savedCount++
+      }
+
+      this._showSuccessNotice(`已记录${savedCount}条`)
+      await this._refreshHomeData()
+    } catch (e) {
+      if (savedCount > 0) {
+        this._showSuccessNotice(`已记录${savedCount}条`)
+        await this._refreshHomeData()
+      }
+      this._showRecordSaveError(e, '记录失败')
+    }
   },
 
   _loadDelayedFeeding() {
@@ -854,6 +954,11 @@ Page({
     const { result } = e.detail
     if (!result) return
 
+    if (result.records && Array.isArray(result.records)) {
+      await this._saveVoiceBatchRecords(result.records)
+      return
+    }
+
     const rawAction = result.action || (result.data && result.data.action) || null
     let action = rawAction
     if (action === 'wake') action = 'end'
@@ -893,7 +998,7 @@ Page({
         this._showSuccessNotice('记录成功')
         await this._refreshHomeData()
       } catch (e) {
-        wx.showToast({ title: '记录失败', icon: 'none' })
+        this._showRecordSaveError(e, '记录失败')
       }
     }
   },
@@ -901,6 +1006,10 @@ Page({
   onVoiceEdit(e) {
     const { result } = e.detail
     if (!result) return
+    if (result.records && result.records.length > 1) {
+      wx.showToast({ title: '多条记录请确认后逐条修改', icon: 'none' })
+      return
+    }
     getApp().globalData.pendingVoiceRecord = result
     wx.navigateTo({
       url: `/pages/record/record?type=${result.type}&mode=manual&from=voice`
@@ -932,7 +1041,7 @@ Page({
       this._showSuccessNotice('开始喂奶')
       await this._refreshHomeData()
     } catch (e) {
-      wx.showToast({ title: '记录失败', icon: 'none' })
+      this._showRecordSaveError(e, '记录失败')
     }
   },
 
@@ -992,7 +1101,7 @@ Page({
         this._showSuccessNotice('喂奶结束')
         await this._refreshHomeData()
       } catch (e) {
-        wx.showToast({ title: '操作失败', icon: 'none' })
+        this._showRecordSaveError(e, '操作失败')
       }
     } else if (amount) {
       try {
@@ -1007,7 +1116,7 @@ Page({
         this._showSuccessNotice('记录成功')
         await this._refreshHomeData()
       } catch (e) {
-        wx.showToast({ title: '记录失败', icon: 'none' })
+        this._showRecordSaveError(e, '记录失败')
       }
     } else {
       wx.showToast({ title: '没有进行中的喂奶记录', icon: 'none' })
@@ -1025,7 +1134,7 @@ Page({
         this._showSuccessNotice('已记录醒来')
         await this._refreshHomeData()
       } catch (e) {
-        wx.showToast({ title: '操作失败', icon: 'none' })
+        this._showRecordSaveError(e, '操作失败')
       }
     } else if (result.startTime && endTime) {
       try {
@@ -1042,7 +1151,7 @@ Page({
         this._showSuccessNotice('记录成功')
         await this._refreshHomeData()
       } catch (e) {
-        wx.showToast({ title: '记录失败', icon: 'none' })
+        this._showRecordSaveError(e, '记录失败')
       }
     } else {
       wx.showToast({ title: '没有进行中的睡眠记录', icon: 'none' })
@@ -1061,7 +1170,7 @@ Page({
       this._showSuccessNotice('宝宝睡了')
       await this._refreshHomeData()
     } catch (e) {
-      wx.showToast({ title: '记录失败', icon: 'none' })
+      this._showRecordSaveError(e, '记录失败')
     }
   },
 
@@ -1145,7 +1254,7 @@ Page({
       this._showSuccessNotice(`已保存${amount}ml`)
       await this._refreshHomeData()
     } catch (e) {
-      wx.showToast({ title: '保存失败', icon: 'none' })
+      this._showRecordSaveError(e, '保存失败')
     }
   },
 
@@ -1153,6 +1262,23 @@ Page({
     const type = e.currentTarget.dataset.type
     this.setData({ showActions: false })
     wx.navigateTo({ url: `/pages/record/record?type=${type}` })
+  },
+
+  goTimeline() {
+    wx.navigateTo({ url: '/pages/timeline/timeline' })
+  },
+
+  setRecordFilter(e) {
+    const filter = e.currentTarget.dataset.filter || 'all'
+    if (filter === this.data.recordFilter) return
+    const range = this._timelineRange
+    const timelineData = range
+      ? this._buildTimelineData(this._dayRecords || [], range.start, range.end, filter)
+      : {}
+    this.setData({
+      recordFilter: filter,
+      ...timelineData
+    })
   },
 
   goHealth(e) {
@@ -1321,9 +1447,10 @@ Page({
     const cache = wx.getStorageSync('ai_assistant_cache')
     if (cache && cache.data && cache.signature === signature && (Date.now() - cache.timestamp < 10 * 60 * 1000)) {
       if (!this.data.aiAssistant) {
+        const assistant = this._getAiAssistantForDisplay(cache.data)
         this.setData({
-          aiAssistant: cache.data,
-          aiAssistantReasonText: this._getAiAssistantReasonText(cache.data, this.data.aiAssistantFactText)
+          aiAssistant: assistant,
+          aiAssistantReasonText: this._getAiAssistantReasonText(assistant, this.data.aiAssistantFactText)
         })
       }
       return
@@ -1336,10 +1463,11 @@ Page({
       const res = await wx.cloud.callFunction({ name: 'babyAssistant', data: { context } })
       const result = res.result
       if (result && result.success && result.data) {
+        const assistant = this._getAiAssistantForDisplay(result.data)
         this.setData({
-          aiAssistant: result.data,
+          aiAssistant: assistant,
           aiAssistantLoading: false,
-          aiAssistantReasonText: this._getAiAssistantReasonText(result.data, this.data.aiAssistantFactText)
+          aiAssistantReasonText: this._getAiAssistantReasonText(assistant, this.data.aiAssistantFactText)
         })
         wx.setStorageSync('ai_assistant_cache', { data: result.data, timestamp: Date.now(), signature })
       } else {
@@ -1357,6 +1485,13 @@ Page({
     this.setData({ aiAssistant: null, aiAssistantReasonText: '' })
     await this._loadAssistantTodoContext()
     this._loadAiAssistant()
+  },
+
+  _getAiAssistantForDisplay(assistant, now = new Date()) {
+    return applyOngoingAssistantStatus(assistant, {
+      ongoingSleep: this.data.ongoingSleep,
+      ongoingFeeding: this.data.ongoingFeeding
+    }, now)
   },
 
   _normalizeSpeechText(text) {
@@ -1578,6 +1713,10 @@ Page({
     }
     if (this.data.aiAssistantReasonText !== reasonText) {
       patch.aiAssistantReasonText = reasonText
+    }
+    const assistant = this._getAiAssistantForDisplay(this.data.aiAssistant, now)
+    if (assistant && assistant !== this.data.aiAssistant) {
+      patch.aiAssistant = assistant
     }
     if (Object.keys(patch).length) {
       this.setData(patch)

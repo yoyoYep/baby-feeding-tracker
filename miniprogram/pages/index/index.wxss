@@ -716,6 +716,13 @@
   background: #FFF5F5;
 }
 
+.date-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+}
+
 .date-center {
   flex: 1;
   min-width: 0;
@@ -764,6 +771,29 @@
   margin-bottom: 16rpx;
 }
 
+.timeline-entry-btn {
+  width: 58rpx;
+  height: 58rpx;
+  border-radius: 50%;
+  background: #FFF5F5;
+  color: #FF9AA2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: inset 0 0 0 2rpx rgba(255, 154, 162, 0.18);
+}
+
+.timeline-entry-btn-hover {
+  background: #FFEDEE;
+  transform: scale(0.96);
+}
+
+.timeline-entry-icon {
+  font-size: 30rpx;
+  line-height: 1;
+}
+
 .card-title {
   font-size: 32rpx;
   font-weight: 600;
@@ -772,6 +802,42 @@
 .record-count {
   font-size: 26rpx;
   color: #999;
+}
+
+.record-filter-scroll {
+  width: 100%;
+  margin: -2rpx 0 18rpx;
+  white-space: nowrap;
+}
+
+.record-filter-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 12rpx;
+  padding-bottom: 2rpx;
+}
+
+.record-filter-chip {
+  height: 54rpx;
+  min-width: 84rpx;
+  padding: 0 18rpx;
+  border-radius: 8rpx;
+  background: #F7F8FA;
+  color: #66717D;
+  border: 1rpx solid #ECEFF3;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24rpx;
+  line-height: 1;
+}
+
+.record-filter-chip.active {
+  background: #FFF2F3;
+  color: #E8505B;
+  border-color: #FFB9C0;
+  font-weight: 700;
 }
 
 .empty-tip {

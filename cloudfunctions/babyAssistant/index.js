@@ -15,7 +15,7 @@ const SYSTEM_PROMPT = `你是一个专业婴儿智能照护助手。根据提供
 5. 每次必须先完成 checks.feeding 和 checks.sleep，再决定 priority；不要先给玩耍/待办建议
 6. checks.feeding 要只使用 plan.nextPlannedMinutesFromNow、lastFeedingStartMinAgo、lastFeedingMinAgo 和喂奶计划判断，不要自己用时间字符串相减
 7. checks.sleep 要结合 careFacts：awakeSinceLastSleepMin、todaySleepTotalMin、recentAvgDailySleepMin、sleepDebtMin、samePeriodSleepPattern、babyAgeMonths；不要使用固定清醒窗口一刀切
-8. 如果宝宝正在进行某项活动（如正在睡觉），优先描述该活动并预估剩余时间
+8. 如果 context.ongoing 存在，status 必须优先描述正在进行的活动，并使用 context.ongoing.elapsedMin 作为唯一可信的已进行时长；可以附加醒来预估，例如“正在睡觉，已睡59分钟，预计18分钟后醒”，但不要把剩余预估写成“正在睡约X分钟”
 9. “要喝奶”和“要睡觉”是最高优先级提醒事件；喂奶只有在已到点或很快到点时才压过睡觉，如果距下次喂奶超过30分钟且 checks.sleep.needed=true，应先睡
 10. 只有 today todos 的 dueNow/upcoming 中实际存在待办时，才提醒完成对应待办；尤其是吃药、体温、疫苗。没有 health_med 待办时严禁建议吃药/喂药/用药；没有洗澡/洗浴待办时严禁建议洗澡
 11. 如果喂奶计划和待办同时到点，把两者合并成同一组行动建议，先说喂奶
@@ -323,12 +323,67 @@ function applyPriorityGuard(parsed, context) {
   return { ...parsed, checks }
 }
 
+function normalizeClockText(value) {
+  const text = String(value || '').replace(/：/g, ':')
+  const colonMatch = text.match(/^(\d{1,2}):(\d{1,2})$/)
+  if (colonMatch) return `${colonMatch[1].padStart(2, '0')}:${colonMatch[2].padStart(2, '0')}`
+  const halfMatch = text.match(/^(\d{1,2})点半$/)
+  if (halfMatch) return `${halfMatch[1].padStart(2, '0')}:30`
+  const pointMatch = text.match(/^(\d{1,2})点(\d{1,2})?$/)
+  if (pointMatch) return `${pointMatch[1].padStart(2, '0')}:${(pointMatch[2] || '00').padStart(2, '0')}`
+  return text
+}
+
+function extractWakeEstimateText(status) {
+  const text = String(status || '').replace(/\s+/g, '')
+  if (!text || !/(醒|睡)/.test(text)) return ''
+  if (/(已睡|睡了)/.test(text) && !/(预计|大概|可能|还|再|醒)/.test(text)) return ''
+
+  const clockMatch = text.match(/(?:预计|大概|可能|约)?(?:在)?((?:[01]?\d|2[0-3])[:：][0-5]\d|(?:[01]?\d|2[0-3])点(?:[0-5]?\d|半)?)(?:左右)?(?:醒|醒来|睡醒)/)
+  if (clockMatch) return `预计${normalizeClockText(clockMatch[1])}醒`
+
+  let durationMatch = text.match(/(?:预计|大概|可能|约|还(?:能|会|要)?睡|再睡|还有|还要)\s*约?(\d+(?:\.\d+)?)(小时|分钟|分)(?:左右)?(?:后)?(?:醒|醒来|睡醒)?/)
+  if (!durationMatch && /正在睡/.test(text) && !/(已睡|睡了)/.test(text)) {
+    durationMatch = text.match(/约?(\d+(?:\.\d+)?)(小时|分钟|分)/)
+  }
+  if (!durationMatch) return ''
+
+  const amount = Number(durationMatch[1])
+  if (!Number.isFinite(amount) || amount <= 0) return ''
+  const minutes = durationMatch[2] === '小时' ? Math.round(amount * 60) : Math.round(amount)
+  return `预计${formatDuration(minutes)}后醒`
+}
+
+function getOngoingStatus(context, parsed) {
+  const ongoing = context && context.ongoing
+  if (!ongoing) return ''
+  const elapsedMin = Number(ongoing.elapsedMin)
+  if (!Number.isFinite(elapsedMin) || elapsedMin < 0) return ''
+  const duration = formatDuration(elapsedMin)
+  if (ongoing.type === 'sleep') {
+    const base = `正在睡觉，已睡${duration}`
+    const estimate = extractWakeEstimateText(parsed && parsed.status)
+    return estimate ? `${base}，${estimate}` : base
+  }
+  if (ongoing.type === 'feeding') return `正在喂奶，已用时${duration}`
+  return ''
+}
+
+function applyOngoingActivityGuard(parsed, context) {
+  const status = getOngoingStatus(context, parsed)
+  if (!status) return parsed
+  return { ...parsed, status }
+}
+
 function applySafetyGuards(parsed, context) {
-  return applyPriorityGuard(
-    applyFeedingCareSpacingGuard(
-      applyTodoScopeGuard(
-        applyNextFeedingGuard(
-          applyPostFeedingGuard(parsed, context),
+  return applyOngoingActivityGuard(
+    applyPriorityGuard(
+      applyFeedingCareSpacingGuard(
+        applyTodoScopeGuard(
+          applyNextFeedingGuard(
+            applyPostFeedingGuard(parsed, context),
+            context
+          ),
           context
         ),
         context

@@ -128,6 +128,20 @@ Page({
     }, 1800)
   },
 
+  _showRecordSaveError(err, fallback = '保存失败') {
+    if (db.isRecordOverlapError && db.isRecordOverlapError(err)) {
+      wx.showModal({
+        title: '输入存在问题',
+        content: db.getRecordOverlapErrorContent(err),
+        showCancel: false,
+        confirmText: '知道了',
+        confirmColor: '#FF9AA2'
+      })
+      return
+    }
+    wx.showToast({ title: fallback, icon: 'none' })
+  },
+
   _formatTimeValue(date) {
     const d = new Date(date)
     return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
@@ -481,7 +495,7 @@ Page({
       })
       this.setData({ ongoingRecordId: res._id })
     } catch (err) {
-      console.error(err)
+      this._showRecordSaveError(err, '开始失败')
     }
   },
 
@@ -537,7 +551,7 @@ Page({
       }
       wx.showToast({ title: '开始时间已更新', icon: 'success' })
     } catch (err) {
-      wx.showToast({ title: '更新时间失败', icon: 'none' })
+      this._showRecordSaveError(err, '更新时间失败')
     }
   },
 
@@ -600,7 +614,7 @@ Page({
       this._showSuccessNotice('保存成功')
       setTimeout(() => wx.navigateBack(), 1500)
     } catch (e) {
-      wx.showToast({ title: '保存失败', icon: 'none' })
+      this._showRecordSaveError(e, '保存失败')
     }
   },
 
@@ -661,7 +675,7 @@ Page({
       })
       this.setData({ ongoingSleepId: res._id })
     } catch (err) {
-      console.error(err)
+      this._showRecordSaveError(err, '开始失败')
     }
   },
 
@@ -723,7 +737,7 @@ Page({
       this._showSuccessNotice('保存成功')
       setTimeout(() => wx.navigateBack(), 1500)
     } catch (e) {
-      wx.showToast({ title: '保存失败', icon: 'none' })
+      this._showRecordSaveError(e, '保存失败')
     }
   },
 

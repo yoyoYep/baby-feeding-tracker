@@ -11,6 +11,7 @@ Page({
     sleepStats: { totalHours: 0, napCount: 0, nightHours: 0 },
     diaperStats: { peeCount: 0, poopCount: 0, total: 0 },
     weekFeeding: [],
+    weekFeedingDuration: [],
     weekSleep: [],
     weekDiaper: []
   },
@@ -142,12 +143,25 @@ Page({
       avgInterval = (totalGap / (count - 1) / 3600000).toFixed(1)
     }
     let avgDuration = '-'
-    const withDuration = feedings.filter(r => r.startTime && r.endTime)
-    if (withDuration.length > 0) {
-      const totalMin = withDuration.reduce((sum, r) => sum + (new Date(r.endTime) - new Date(r.startTime)) / 60000, 0)
-      avgDuration = Math.round(totalMin / withDuration.length)
+    const feedingDurations = feedings
+      .map(r => this._getFeedingDurationMin(r))
+      .filter(min => min > 0)
+    if (feedingDurations.length > 0) {
+      const totalMin = feedingDurations.reduce((sum, min) => sum + min, 0)
+      avgDuration = Math.round(totalMin / feedingDurations.length)
     }
     this.setData({ feedingStats: { count, totalAmount, avgInterval, avgDuration } })
+  },
+
+  _getFeedingDurationMin(record) {
+    if (!record) return 0
+    const explicitDuration = record.data && Number(record.data.duration)
+    if (Number.isFinite(explicitDuration) && explicitDuration > 0) return explicitDuration
+    if (!record.startTime || !record.endTime) return 0
+    const start = new Date(record.startTime).getTime()
+    const end = new Date(record.endTime).getTime()
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return 0
+    return (end - start) / 60000
   },
 
   _calcSleepStats(records, start, end) {
@@ -202,6 +216,7 @@ Page({
 
     const allSleeps = records.filter(r => r.type === 'sleep' && r.status === 'completed' && r.endTime)
     const weekFeeding = []
+    const weekFeedingDuration = []
     const weekSleep = []
     const weekDiaper = []
 
@@ -216,6 +231,14 @@ Page({
       const feedings = dayRecords.filter(r => r.type === 'feeding' && r.status === 'completed')
       const totalMl = feedings.reduce((s, r) => s + ((r.data && r.data.amount) || 0), 0)
       weekFeeding.push({ value: totalMl, label: `${day.getMonth() + 1}/${day.getDate()}` })
+
+      const feedingDurations = feedings
+        .map(r => this._getFeedingDurationMin(r))
+        .filter(min => min > 0)
+      const avgFeedingDuration = feedingDurations.length
+        ? Math.round(feedingDurations.reduce((s, min) => s + min, 0) / feedingDurations.length)
+        : 0
+      weekFeedingDuration.push({ value: avgFeedingDuration, label: `${day.getMonth() + 1}/${day.getDate()}` })
 
       let sleepMin = 0
       allSleeps.forEach(r => {
@@ -232,14 +255,16 @@ Page({
     })
 
     const maxFeed = Math.max(...weekFeeding.map(d => d.value), 1)
+    const maxFeedingDuration = Math.max(...weekFeedingDuration.map(d => d.value), 1)
     const maxSleep = Math.max(...weekSleep.map(d => d.value), 1)
     const maxDiaper = Math.max(...weekDiaper.map(d => d.value), 1)
 
     weekFeeding.forEach(d => { d.percent = Math.round(d.value / maxFeed * 100) })
+    weekFeedingDuration.forEach(d => { d.percent = Math.round(d.value / maxFeedingDuration * 100) })
     weekSleep.forEach(d => { d.percent = Math.round(d.value / maxSleep * 100) })
     weekDiaper.forEach(d => { d.percent = Math.round(d.value / maxDiaper * 100) })
 
-    this.setData({ weekFeeding, weekSleep, weekDiaper })
+    this.setData({ weekFeeding, weekFeedingDuration, weekSleep, weekDiaper })
   },
 
   _getDateText(d) {

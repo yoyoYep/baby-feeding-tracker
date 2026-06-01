@@ -1,6 +1,13 @@
 let db = null
 let _ = null
 const { normalizeFeedingPlanConfig, getLogicalDayStart } = require('./feeding-plan')
+const {
+  getRecordTimeRange,
+  findSameTypeOverlap,
+  createRecordOverlapError,
+  isRecordOverlapError,
+  getRecordOverlapErrorContent
+} = require('./record-overlap')
 
 function getDb() {
   if (!db && getApp().globalData.cloudReady) {
@@ -116,7 +123,7 @@ function getRecordEndTime(record) {
     return new Date()
   }
 
-  if (record.type === 'bath' && record.data && record.data.duration) {
+  if ((record.type === 'bath' || record.type === 'feeding' || record.type === 'sleep') && record.data && record.data.duration) {
     const minutes = parseInt(record.data.duration, 10)
     if (minutes > 0) return new Date(start.getTime() + minutes * 60000)
   }
@@ -212,6 +219,65 @@ function saveToLocal(data) {
   return { _id: newRecord._id }
 }
 
+async function getRecordForValidation(id) {
+  if (!id) return null
+
+  if (await ensureCloud() && !id.startsWith('local_')) {
+    try {
+      const res = await db.collection(COLLECTION.RECORDS).doc(id).get()
+      if (res && res.data) return res.data
+    } catch (e) {
+      console.warn('重叠校验读取云端记录失败，尝试本地记录', e)
+    }
+  }
+
+  return getLocalRecords().find(r => r._id === id) || null
+}
+
+async function getRecordsForOverlapValidation(range) {
+  const paddingMs = 2 * 86400000
+  const startDate = new Date(range.start.getTime() - paddingMs)
+  const endDate = new Date(Math.max(range.start.getTime(), range.end.getTime()) + paddingMs)
+  const limit = 300
+
+  if (await ensureCloud()) {
+    try {
+      const primaryPromise = db.collection(COLLECTION.RECORDS)
+        .where({
+          startTime: _.gte(startDate).and(_.lt(endDate))
+        })
+        .orderBy('startTime', 'desc')
+        .limit(limit)
+        .get()
+      const fallbackPromise = db.collection(COLLECTION.RECORDS)
+        .orderBy('startTime', 'desc')
+        .limit(limit)
+        .get()
+
+      const results = await Promise.all([
+        primaryPromise.catch(() => ({ data: [] })),
+        fallbackPromise.catch(() => ({ data: [] }))
+      ])
+      return filterRecordsByOverlap(mergeRecords(results[0].data || [], results[1].data || []), startDate, endDate, limit)
+    } catch (e) {
+      console.warn('重叠校验云端查询失败，尝试本地记录', e)
+    }
+  }
+
+  return filterRecordsByOverlap(getLocalRecords(), startDate, endDate, limit)
+}
+
+async function validateNoRecordTimeOverlap(record, excludeId) {
+  const range = getRecordTimeRange(record)
+  if (!range) return
+
+  const records = await getRecordsForOverlapValidation(range)
+  const conflict = findSameTypeOverlap(record, records, { excludeId })
+  if (conflict) {
+    throw createRecordOverlapError(record, conflict)
+  }
+}
+
 module.exports = {
   async getRecordById(id) {
     if (await ensureCloud() && !id.startsWith('local_')) {
@@ -228,6 +294,8 @@ module.exports = {
   },
 
   async addRecord(data) {
+    await validateNoRecordTimeOverlap(data)
+
     const member = getApp().globalData.currentMember
     const recordedBy = member ? { role: member.role, nickname: member.nickname } : null
 
@@ -249,6 +317,10 @@ module.exports = {
   },
 
   async updateRecord(id, data) {
+    const currentRecord = await getRecordForValidation(id)
+    const mergedRecord = currentRecord ? { ...currentRecord, ...data } : data
+    await validateNoRecordTimeOverlap(mergedRecord, id)
+
     if (await ensureCloud() && !id.startsWith('local_')) {
       try {
         return await db.collection(COLLECTION.RECORDS).doc(id).update({
@@ -709,5 +781,8 @@ module.exports = {
     wx.setStorageSync(STORAGE_KEYS.CONFIG, normalized)
     getApp().globalData.config = normalized
     return normalized
-  }
+  },
+
+  isRecordOverlapError,
+  getRecordOverlapErrorContent
 }
