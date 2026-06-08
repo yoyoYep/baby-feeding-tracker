@@ -41,6 +41,10 @@
   background: #f0faf3;
 }
 
+.tool-item.diet .tool-icon {
+  background: #fff7e8;
+}
+
 .tool-item.music .tool-icon {
   background: #f4f2ff;
 }

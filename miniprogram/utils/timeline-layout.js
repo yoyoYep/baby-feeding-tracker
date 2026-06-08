@@ -16,7 +16,7 @@ const FIXED_DURATION_LANES = {
 const TYPE_META = {
   feeding: { title: '喂奶', icon: '🍼' },
   sleep: { title: '睡眠', icon: '💤' },
-  diaper: { title: '换尿布', icon: '🧷' },
+  diaper: { title: '尿便', icon: '💧' },
   supplement: { title: '辅食', icon: '🥣' },
   bath: { title: '洗澡', icon: '🛁' },
   health_temp: { title: '体温', icon: '🌡️' },
@@ -45,6 +45,21 @@ const SLEEP_QUALITY_NAMES = {
   good: '好',
   normal: '一般',
   poor: '差'
+}
+
+const DIAPER_STATUS_NAMES = {
+  watery: '水样',
+  mushy: '糊状',
+  soft: '软便',
+  formed: '条状',
+  pellet: '颗粒'
+}
+
+const DIAPER_COLOR_NAMES = {
+  golden: '金黄',
+  yellowgreen: '黄绿',
+  green: '绿色',
+  dark: '深褐'
 }
 
 function toDate(value) {
@@ -251,11 +266,41 @@ function getGrowthDesc(record, babyInfo) {
   return parts.join(' ')
 }
 
+function getPeeCount(data = {}) {
+  const subType = data.subType || 'pee'
+  if (subType === 'poop') return 0
+  const count = parseInt(data.peeCount, 10)
+  return Number.isFinite(count) && count > 0 ? count : 1
+}
+
+function getDiaperDisplay(data = {}) {
+  const subType = data.subType || 'pee'
+  const peeCount = getPeeCount(data)
+  const title = subType === 'poop' ? '大便' : (subType === 'mixed' ? '大小便' : '小便')
+  const icon = subType === 'pee' ? '💧' : (subType === 'mixed' ? '💧' : '🟡')
+  const parts = []
+  if (subType === 'pee') {
+    if (peeCount > 1) parts.push(`${peeCount}次`)
+  } else {
+    if (subType === 'mixed') parts.push(`小便${peeCount}次`)
+    if (data.color) parts.push(DIAPER_COLOR_NAMES[data.color] || data.color)
+    if (data.status) parts.push(DIAPER_STATUS_NAMES[data.status] || data.status)
+    if (data.amount) parts.push(data.amount)
+  }
+  return {
+    title,
+    icon,
+    desc: parts.join(' '),
+    typeClass: `diaper diaper-${subType}`
+  }
+}
+
 function getRecordDisplay(record, context = {}) {
   const data = record.data || {}
   const meta = TYPE_META[record.type] || { title: '记录', icon: '•' }
   let title = meta.title
   let desc = ''
+  let icon = meta.icon
 
   switch (record.type) {
     case 'feeding': {
@@ -271,8 +316,10 @@ function getRecordDisplay(record, context = {}) {
       desc = context.durationMinutes > 0 ? formatDuration(context.durationMinutes) : ''
       break
     case 'diaper': {
-      const subNames = { pee: '小便', poop: '大便', mixed: '大小便' }
-      desc = subNames[data.subType] || ''
+      const diaper = getDiaperDisplay(data)
+      title = diaper.title
+      desc = diaper.desc
+      icon = diaper.icon
       break
     }
     case 'supplement':
@@ -302,7 +349,7 @@ function getRecordDisplay(record, context = {}) {
       break
   }
 
-  return { title, desc, icon: meta.icon }
+  return { title, desc, icon }
 }
 
 function compactValue(value) {
@@ -338,10 +385,11 @@ function getDetailLines(record, context = {}) {
       pushLine(lines, '夜醒次数', data.wakeCount !== undefined && data.wakeCount !== null ? `${data.wakeCount}次` : '')
       break
     case 'diaper': {
-      const subNames = { pee: '小便', poop: '大便', mixed: '大小便' }
-      pushLine(lines, '类型', subNames[data.subType] || data.subType)
-      pushLine(lines, '状态', data.status)
-      pushLine(lines, '颜色', data.color)
+      const diaper = getDiaperDisplay(data)
+      pushLine(lines, '类型', diaper.title)
+      pushLine(lines, '小便次数', getPeeCount(data) ? `${getPeeCount(data)}次` : '')
+      pushLine(lines, '形状', DIAPER_STATUS_NAMES[data.status] || data.status)
+      pushLine(lines, '颜色', DIAPER_COLOR_NAMES[data.color] || data.color)
       pushLine(lines, '量', data.amount)
       break
     }
@@ -475,6 +523,13 @@ function avoidPointOverlap(items) {
   })
 }
 
+function getRecordTypeClass(record) {
+  if (record && record.type === 'diaper') {
+    return getDiaperDisplay(record.data || {}).typeClass
+  }
+  return record.type
+}
+
 function buildHourMarks(visibleEndMinute = DAY_MINUTES, options = {}) {
   const marks = []
   const endHour = Math.ceil(normalizeVisibleEndMinute(visibleEndMinute) / 60)
@@ -531,7 +586,7 @@ function buildTimelineLayout(records, options = {}) {
       recordedByText: getRecordedBy(record),
       startClock: formatClock(start),
       timeStr: formatClock(start),
-      typeClass: record.type,
+      typeClass: getRecordTypeClass(record),
       isClippedStart: start.getTime() < dayStart.getTime(),
       isClippedEnd: end.getTime() > dayEnd.getTime()
     }

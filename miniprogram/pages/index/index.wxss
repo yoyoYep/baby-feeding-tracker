@@ -1,4 +1,16 @@
 /* 底部操作区 */
+.container {
+  padding: 16rpx 22rpx;
+  padding-bottom: 300rpx;
+}
+
+.card {
+  border-radius: 18rpx;
+  padding: 24rpx;
+  margin-bottom: 16rpx;
+  box-shadow: 0 2rpx 12rpx rgba(25, 30, 40, 0.05);
+}
+
 .bottom-bar {
   position: fixed;
   bottom: calc(108rpx + env(safe-area-inset-bottom));
@@ -68,7 +80,7 @@
 }
 
 .home-date-card {
-  padding: 24rpx;
+  padding: 20rpx 22rpx;
 }
 
 /* 进行中卡片 */
@@ -76,6 +88,8 @@
   display: flex;
   align-items: center;
   border-left: 6rpx solid;
+  padding: 18rpx 20rpx;
+  min-height: 72rpx;
 }
 
 .feeding-ongoing { border-color: #42A5F5; }
@@ -102,8 +116,8 @@
 }
 
 .ongoing-icon {
-  font-size: 44rpx;
-  margin-right: 20rpx;
+  font-size: 38rpx;
+  margin-right: 18rpx;
 }
 
 .ongoing-info {
@@ -116,12 +130,14 @@
   font-size: 32rpx;
   font-weight: 500;
   color: #222;
+  line-height: 1.25;
 }
 
 .ongoing-time {
-  font-size: 26rpx;
+  font-size: 27rpx;
   color: #666;
   margin-top: 4rpx;
+  line-height: 1.25;
 }
 
 .ongoing-actions {
@@ -134,9 +150,10 @@
 .ongoing-action {
   font-size: 28rpx;
   color: #FF9AA2;
-  padding: 10rpx 24rpx;
+  padding: 8rpx 20rpx;
   border: 1rpx solid #FF9AA2;
-  border-radius: 30rpx;
+  border-radius: 999rpx;
+  line-height: 1.25;
 }
 
 .ongoing-action.secondary {
@@ -146,10 +163,14 @@
 }
 
 /* 统计卡片 */
+.stats-card {
+  padding: 22rpx 24rpx 20rpx;
+}
+
 .stats-grid {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr 1fr;
-  gap: 16rpx;
+  gap: 10rpx;
   text-align: center;
 }
 
@@ -157,40 +178,73 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 16rpx 0;
+  padding: 8rpx 0;
 }
 
 .stat-icon {
-  font-size: 48rpx;
-  margin-bottom: 8rpx;
+  font-size: 44rpx;
+  margin-bottom: 4rpx;
 }
 
 .stat-value {
   font-size: 48rpx;
   font-weight: 700;
   color: #222;
-  line-height: 1.2;
+  line-height: 1.12;
 }
 
 .stat-label {
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: #999;
-  margin-top: 8rpx;
+  margin-top: 6rpx;
+}
+
+.diaper-stat-pair {
+  height: 54rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10rpx;
+}
+
+.diaper-stat-mini {
+  display: flex;
+  align-items: baseline;
+  gap: 3rpx;
+}
+
+.diaper-stat-num {
+  font-size: 38rpx;
+  line-height: 1.1;
+  font-weight: 800;
+}
+
+.diaper-stat-mini.pee .diaper-stat-num {
+  color: #2A95A3;
+}
+
+.diaper-stat-mini.poop .diaper-stat-num {
+  color: #B77900;
+}
+
+.diaper-stat-label {
+  font-size: 24rpx;
+  color: #8D99A6;
 }
 
 .quick-start-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 18rpx;
-  margin-top: 18rpx;
+  gap: 14rpx;
+  margin-top: 16rpx;
 }
 
 .quick-start-btn {
   display: flex;
   align-items: center;
   min-width: 0;
-  padding: 16rpx 20rpx;
-  border-radius: 18rpx;
+  padding: 13rpx 16rpx;
+  border-radius: 14rpx;
   background: #FFF1F2;
   border: 2rpx solid #FF9AA2;
   box-shadow: 0 6rpx 16rpx rgba(255, 154, 162, 0.16);
@@ -208,8 +262,8 @@
 }
 
 .quick-start-icon {
-  width: 68rpx;
-  height: 68rpx;
+  width: 64rpx;
+  height: 64rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -229,7 +283,7 @@
 }
 
 .quick-start-title {
-  font-size: 31rpx;
+  font-size: 32rpx;
   font-weight: 700;
   color: #E8505B;
   line-height: 1.25;
@@ -237,7 +291,7 @@
 
 .quick-start-desc {
   margin-top: 2rpx;
-  font-size: 22rpx;
+  font-size: 25rpx;
   color: #A85C62;
   line-height: 1.2;
 }
@@ -275,13 +329,13 @@
 }
 
 .feeding-info {
-  margin-top: 24rpx;
-  padding-top: 20rpx;
+  margin-top: 18rpx;
+  padding-top: 16rpx;
   border-top: 1rpx solid #f0f0f0;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 40rpx;
+  gap: 28rpx;
 }
 
 .feeding-info-item {
@@ -296,7 +350,7 @@
 }
 
 .feeding-info-value {
-  font-size: 30rpx;
+  font-size: 31rpx;
   font-weight: 600;
 }
 
@@ -309,8 +363,8 @@
 }
 
 .care-facts-line {
-  margin-top: 14rpx;
-  padding: 12rpx 18rpx;
+  margin-top: 12rpx;
+  padding: 10rpx 14rpx;
   border-radius: 10rpx;
   background: #F7FBFF;
   display: flex;
@@ -325,90 +379,106 @@
   border-radius: 999rpx;
   background: #EAF4FF;
   color: #4E85B6;
-  font-size: 21rpx;
+  font-size: 24rpx;
   line-height: 1.25;
 }
 
 .care-facts-text {
   min-width: 0;
   color: #617386;
-  font-size: 23rpx;
+  font-size: 26rpx;
   line-height: 1.4;
 }
 
 .feeding-plan-card {
-  padding: 24rpx;
+  padding: 22rpx 22rpx 20rpx;
   border-left: 6rpx solid #42A5F5;
-  background: #fff;
+  background: linear-gradient(135deg, #FFFFFF 0%, #F7FBFF 100%);
 }
 
 .feeding-plan-card.due {
   border-left-color: #E8505B;
-  background: linear-gradient(90deg, #FFF5F5 0%, #fff 70%);
+  background: linear-gradient(135deg, #FFFFFF 0%, #FFF7F7 100%);
 }
 
 .feeding-plan-card.sleeping {
   border-left-color: #8E35A0;
-  background: linear-gradient(90deg, #F8F0FF 0%, #fff 72%);
+  background: linear-gradient(135deg, #FFFFFF 0%, #FBF7FF 100%);
 }
 
 .feeding-plan-card.done {
   border-left-color: #1F8F4D;
-  background: linear-gradient(90deg, #F2FFF7 0%, #fff 72%);
+  background: linear-gradient(135deg, #FFFFFF 0%, #F3FFF7 100%);
 }
 
-.feeding-plan-main {
+.feeding-plan-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14rpx;
   min-width: 0;
 }
 
+.feeding-plan-leading {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+}
+
 .feeding-plan-icon {
-  width: 64rpx;
-  height: 64rpx;
+  width: 60rpx;
+  height: 60rpx;
   border-radius: 50%;
-  margin-right: 18rpx;
+  margin-right: 12rpx;
   background: #EAF5FF;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 36rpx;
+  font-size: 34rpx;
   flex-shrink: 0;
+  box-shadow: inset 0 0 0 2rpx rgba(66, 165, 245, 0.12);
 }
 
 .feeding-plan-card.due .feeding-plan-icon {
   background: #FFEDEE;
+  box-shadow: inset 0 0 0 2rpx rgba(232, 80, 91, 0.12);
 }
 
 .feeding-plan-card.sleeping .feeding-plan-icon {
   background: #F0E4FA;
+  box-shadow: inset 0 0 0 2rpx rgba(142, 53, 160, 0.12);
 }
 
 .feeding-plan-card.done .feeding-plan-icon {
   background: #E5F7EC;
+  box-shadow: inset 0 0 0 2rpx rgba(31, 143, 77, 0.12);
 }
 
 .feeding-plan-copy {
-  flex: 0 0 auto;
-  max-width: 170rpx;
+  flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
 }
 
 .feeding-plan-title {
-  font-size: 31rpx;
+  max-width: 100%;
+  font-size: 32rpx;
   font-weight: 700;
   color: #222;
-  line-height: 1.25;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .feeding-plan-sub {
-  margin-top: 4rpx;
-  font-size: 40rpx;
+  margin-top: 6rpx;
+  font-size: 38rpx;
   font-weight: 800;
   color: #2E83C5;
-  line-height: 1.15;
+  line-height: 1.12;
 }
 
 .feeding-plan-card.due .feeding-plan-sub {
@@ -424,33 +494,31 @@
 }
 
 .feeding-plan-estimate {
-  flex: 1;
-  min-width: 0;
-  height: 86rpx;
-  margin: 0 16rpx;
-  padding: 10rpx 12rpx;
+  margin-top: 14rpx;
+  padding: 10rpx 14rpx;
   border-radius: 8rpx;
-  background: #F7FAFD;
+  background: rgba(247, 250, 253, 0.88);
   border: 1rpx solid #E6EEF6;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
+  gap: 16rpx;
   box-sizing: border-box;
 }
 
 .feeding-plan-estimate-label {
-  font-size: 20rpx;
+  flex-shrink: 0;
+  font-size: 25rpx;
   color: #8795A6;
-  line-height: 1.1;
+  line-height: 1.2;
 }
 
 .feeding-plan-estimate-time {
-  margin-top: 6rpx;
-  font-size: 38rpx;
+  min-width: 0;
+  font-size: 36rpx;
   font-weight: 800;
   color: #2E83C5;
-  line-height: 1;
+  line-height: 1.15;
 }
 
 .feeding-plan-card.sleeping .feeding-plan-estimate {
@@ -471,11 +539,22 @@
   color: #E8505B;
 }
 
+.feeding-plan-card.done .feeding-plan-estimate {
+  background: rgba(244, 253, 247, 0.9);
+  border-color: #D4EEDD;
+}
+
+.feeding-plan-card.done .feeding-plan-estimate-time {
+  color: #1F8F4D;
+}
+
 .feeding-plan-count {
-  width: 94rpx;
-  height: 94rpx;
-  border-radius: 50%;
-  background: #F6FAFF;
+  min-width: 108rpx;
+  height: 70rpx;
+  padding: 0 14rpx;
+  border-radius: 999rpx;
+  background: rgba(246, 250, 255, 0.95);
+  border: 1rpx solid #E3EEF8;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -484,65 +563,92 @@
 }
 
 .feeding-plan-count-num {
-  font-size: 28rpx;
+  font-size: 32rpx;
   font-weight: 800;
   color: #2E83C5;
   line-height: 1.1;
 }
 
 .feeding-plan-count-label {
-  margin-top: 4rpx;
-  font-size: 20rpx;
+  margin-top: 2rpx;
+  font-size: 24rpx;
   color: #8A9BAD;
 }
 
+.feeding-plan-card.due .feeding-plan-count {
+  background: #FFF7F7;
+  border-color: #FFE0E2;
+}
+
+.feeding-plan-card.due .feeding-plan-count-num {
+  color: #E8505B;
+}
+
+.feeding-plan-card.sleeping .feeding-plan-count {
+  background: #FBF7FF;
+  border-color: #EADDF5;
+}
+
+.feeding-plan-card.sleeping .feeding-plan-count-num {
+  color: #8E35A0;
+}
+
+.feeding-plan-card.done .feeding-plan-count {
+  background: #F4FDF7;
+  border-color: #D4EEDD;
+}
+
+.feeding-plan-card.done .feeding-plan-count-num {
+  color: #1F8F4D;
+}
+
 .feeding-plan-meta {
-  margin-top: 18rpx;
+  margin-top: 14rpx;
   display: flex;
   flex-wrap: wrap;
-  gap: 12rpx;
+  gap: 10rpx;
 }
 
 .feeding-plan-meta text {
   max-width: 100%;
-  padding: 7rpx 14rpx;
+  padding: 7rpx 12rpx;
   border-radius: 8rpx;
-  background: #F5F7FA;
+  background: rgba(245, 247, 250, 0.9);
   color: #66717D;
-  font-size: 22rpx;
+  font-size: 25rpx;
   line-height: 1.25;
 }
 
 .feeding-plan-snooze {
   display: inline-flex;
-  margin-top: 14rpx;
-  padding: 8rpx 14rpx;
+  margin-top: 12rpx;
+  padding: 7rpx 12rpx;
   border-radius: 8rpx;
   background: #FFF7E6;
   color: #B35A00;
-  font-size: 23rpx;
+  font-size: 25rpx;
   line-height: 1.25;
   font-weight: 700;
 }
 
 .feeding-plan-scroll {
-  margin-top: 18rpx;
+  margin-top: 12rpx;
   width: 100%;
   white-space: nowrap;
 }
 
 .feeding-plan-times {
   display: inline-flex;
-  gap: 12rpx;
+  gap: 10rpx;
   padding-bottom: 2rpx;
 }
 
 .feeding-plan-pill {
-  height: 54rpx;
-  min-width: 104rpx;
+  height: 56rpx;
+  min-width: 110rpx;
   padding: 0 16rpx;
   border-radius: 8rpx;
-  background: #F7F8FA;
+  background: rgba(247, 248, 250, 0.94);
   color: #8B96A3;
   display: flex;
   align-items: center;
@@ -572,37 +678,34 @@
 }
 
 .feeding-plan-pill-time {
-  font-size: 24rpx;
+  font-size: 26rpx;
   line-height: 1;
 }
 
 .feeding-plan-pill-mark {
-  font-size: 22rpx;
+  font-size: 24rpx;
   line-height: 1;
 }
 
 .feeding-plan-warning {
-  margin-top: 14rpx;
+  margin-top: 12rpx;
   color: #D46B08;
   background: #FFF7E6;
   border-radius: 8rpx;
-  padding: 12rpx 16rpx;
-  font-size: 23rpx;
+  padding: 10rpx 14rpx;
+  font-size: 25rpx;
 }
 
-/* AI 助手 */
-.ai-assistant-section {
-  margin-top: 16rpx;
+.care-suggestion-card {
+  margin-top: 14rpx;
+  padding-top: 14rpx;
+  border-top: 1rpx solid #E8F4FD;
 }
-.ai-assistant-divider {
-  height: 1rpx;
-  background: #E8F4FD;
-  margin-bottom: 16rpx;
-}
+
 .ai-assistant-content {
   background: #F0F9FF;
   border-radius: 12rpx;
-  padding: 16rpx 20rpx;
+  padding: 14rpx 16rpx;
 }
 .ai-assistant-header {
   display: flex;
@@ -610,7 +713,7 @@
   gap: 8rpx;
 }
 .ai-assistant-icon {
-  font-size: 28rpx;
+  font-size: 30rpx;
   line-height: 1.35;
 }
 .ai-assistant-title {
@@ -620,7 +723,7 @@
   flex-direction: column;
 }
 .ai-assistant-status {
-  font-size: 26rpx;
+  font-size: 29rpx;
   color: #1A1A1A;
   font-weight: 500;
   line-height: 1.35;
@@ -632,12 +735,12 @@
   flex-shrink: 0;
 }
 .ai-assistant-voice {
-  width: 56rpx;
-  height: 56rpx;
+  width: 52rpx;
+  height: 52rpx;
   border-radius: 50%;
   background: #E3F2FD;
   color: #2E83C5;
-  font-size: 28rpx;
+  font-size: 26rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -652,36 +755,113 @@
   color: #8795A6;
 }
 .ai-assistant-refresh {
-  font-size: 32rpx;
-  color: #999;
-  padding: 8rpx;
+  width: 52rpx;
+  height: 52rpx;
+  border-radius: 50%;
+  background: #F4F7FA;
+  color: #7D8A99;
+  font-size: 30rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 .ai-assistant-suggestions {
-  margin-top: 10rpx;
+  margin-top: 8rpx;
   display: flex;
   flex-direction: column;
   gap: 4rpx;
 }
 .ai-assistant-suggestion {
-  font-size: 24rpx;
+  font-size: 27rpx;
   color: #333;
-  line-height: 1.5;
+  line-height: 1.45;
 }
 .ai-assistant-reason {
   display: block;
   margin-top: 6rpx;
-  font-size: 22rpx;
+  font-size: 25rpx;
   color: #999;
 }
 .ai-assistant-loading {
-  padding: 16rpx 20rpx;
+  padding: 14rpx 16rpx;
   background: #F0F9FF;
   border-radius: 12rpx;
   text-align: center;
 }
 .ai-assistant-loading-text {
-  font-size: 24rpx;
+  font-size: 27rpx;
   color: #999;
+}
+
+.early-education-content {
+  padding: 12rpx 14rpx;
+  background: #F4FBF7;
+  border-radius: 12rpx;
+  display: flex;
+  align-items: flex-start;
+  gap: 12rpx;
+}
+
+.early-education-content.with-ai {
+  margin-top: 10rpx;
+}
+
+.early-education-topline {
+  width: 86rpx;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5rpx;
+}
+
+.early-education-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.early-education-label {
+  padding: 3rpx 10rpx;
+  border-radius: 999rpx;
+  background: #E4F5EB;
+  font-size: 25rpx;
+  color: #2F7D59;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.early-education-duration {
+  font-size: 24rpx;
+  color: #6C8F7C;
+  line-height: 1.2;
+}
+
+.early-education-title {
+  display: block;
+  font-size: 28rpx;
+  line-height: 1.35;
+  color: #1A1A1A;
+  font-weight: 600;
+}
+
+.early-education-text {
+  margin-top: 4rpx;
+  font-size: 25rpx;
+  line-height: 1.45;
+  color: #333;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.early-education-reason {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 25rpx;
+  line-height: 1.4;
+  color: #6C8F7C;
 }
 
 /* 时间线 */
@@ -689,14 +869,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 24rpx;
+  gap: 18rpx;
   position: relative;
 }
 
 .date-arrow {
   font-size: 44rpx;
   color: #FF9AA2;
-  padding: 10rpx 20rpx;
+  padding: 8rpx 16rpx;
   font-weight: bold;
 }
 
@@ -707,11 +887,11 @@
 .date-text {
   display: inline-flex;
   justify-content: center;
-  min-width: 148rpx;
-  font-size: 28rpx;
+  min-width: 136rpx;
+  font-size: 31rpx;
   font-weight: 600;
   color: #FF9AA2;
-  padding: 8rpx 20rpx;
+  padding: 7rpx 18rpx;
   border-radius: 24rpx;
   background: #FFF5F5;
 }
@@ -737,7 +917,7 @@
   justify-content: center;
   gap: 14rpx;
   max-width: 100%;
-  margin-bottom: 8rpx;
+  margin-bottom: 6rpx;
 }
 
 .baby-name {
@@ -745,19 +925,19 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 34rpx;
+  font-size: 36rpx;
   font-weight: 700;
   color: #222;
 }
 
 .baby-age {
   flex-shrink: 0;
-  font-size: 24rpx;
+  font-size: 27rpx;
   color: #777;
 }
 
 .back-today {
-  font-size: 26rpx;
+  font-size: 29rpx;
   color: #FF9AA2;
   border: 1rpx solid #FF9AA2;
   border-radius: 20rpx;
@@ -768,12 +948,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16rpx;
+  margin-bottom: 12rpx;
 }
 
 .timeline-entry-btn {
-  width: 58rpx;
-  height: 58rpx;
+  width: 52rpx;
+  height: 52rpx;
   border-radius: 50%;
   background: #FFF5F5;
   color: #FF9AA2;
@@ -790,36 +970,36 @@
 }
 
 .timeline-entry-icon {
-  font-size: 30rpx;
+  font-size: 31rpx;
   line-height: 1;
 }
 
 .card-title {
-  font-size: 32rpx;
+  font-size: 35rpx;
   font-weight: 600;
 }
 
 .record-count {
-  font-size: 26rpx;
+  font-size: 30rpx;
   color: #999;
 }
 
 .record-filter-scroll {
   width: 100%;
-  margin: -2rpx 0 18rpx;
+  margin: -2rpx 0 14rpx;
   white-space: nowrap;
 }
 
 .record-filter-row {
   display: inline-flex;
   align-items: center;
-  gap: 12rpx;
+  gap: 10rpx;
   padding-bottom: 2rpx;
 }
 
 .record-filter-chip {
-  height: 54rpx;
-  min-width: 84rpx;
+  height: 56rpx;
+  min-width: 88rpx;
   padding: 0 18rpx;
   border-radius: 8rpx;
   background: #F7F8FA;
@@ -829,7 +1009,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24rpx;
+  font-size: 27rpx;
   line-height: 1;
 }
 
@@ -844,7 +1024,7 @@
   text-align: center;
   padding: 60rpx 0;
   color: #999;
-  font-size: 28rpx;
+  font-size: 31rpx;
 }
 
 /* 快捷操作 */
@@ -892,6 +1072,8 @@
 
 .feeding-icon { background: #BBDEFB; }
 .diaper-icon { background: #FFE0B2; }
+.pee-icon { background: #DDF6FA; }
+.poop-icon { background: #FFF0B8; }
 .sleep-icon { background: #E1BEE7; }
 .bath-icon { background: #D6EEF8; }
 .supplement-icon { background: #C8E6C9; }

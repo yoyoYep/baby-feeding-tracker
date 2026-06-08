@@ -398,6 +398,21 @@
   border-color: #F0A33A;
 }
 
+.point-item.diaper-pee .point-dot {
+  border-color: #53B9C8;
+  background: #F1FCFD;
+}
+
+.point-item.diaper-poop .point-dot {
+  border-color: #D39A21;
+  background: #FFF9E8;
+}
+
+.point-item.diaper-mixed .point-dot {
+  border-color: #C79A33;
+  background: linear-gradient(135deg, #F1FCFD 0%, #F1FCFD 48%, #FFF5D8 52%, #FFF5D8 100%);
+}
+
 .point-item.bath .point-dot {
   border-color: #2A9BB8;
 }

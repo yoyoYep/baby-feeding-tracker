@@ -2,9 +2,9 @@
   bindtouchstart="onTouchStart"
   bindtouchmove="onTouchMove"
   bindtouchend="onTouchEnd">
-  <view class="item {{item.type}}" style="transform:translateX({{offsetX}}rpx)">
+  <view class="item {{item.type}} {{item.diaperClass ? item.diaperClass : ''}}" style="transform:translateX({{offsetX}}rpx)">
     <view class="item-icon">
-      <text>{{iconMap[item.type]}}</text>
+      <text>{{item.icon ? item.icon : iconMap[item.type]}}</text>
     </view>
     <view class="item-content">
       <view class="item-title">{{item.title}}</view>

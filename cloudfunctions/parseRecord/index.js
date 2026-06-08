@@ -50,12 +50,15 @@ const SYSTEM_PROMPT = `你是一个宝宝喂养记录解析助手。用户会用
   - "喂奶结束/喝完了/喂完了" → action="end", amount=数字(如果提到了奶量)
   - "刚喝了120ml奶"（已经喝完的完整记录）→ action="complete", amount=120
   - 重要：如果同时提到了开始时间和时长/结束时间（如"8点开始喝奶喝了20分钟"），必须设action="complete"，不能设"start"
-- diaper: {"subType": "pee|poop|mixed", "status": "watery|mushy|soft|formed|pellet|", "color": "golden|yellowgreen|green|dark|", "amount": "少量|适量|较多|"}
+- diaper: {"subType": "pee|poop|mixed", "peeCount": 0|1|2|3, "status": "watery|mushy|soft|formed|pellet|", "color": "golden|yellowgreen|green|dark|", "amount": "少量|适量|较多|"}
   - subType映射: 小便/尿→"pee", 大便/拉/粑粑→"poop", 大小便/混合→"mixed"
+  - peeCount表示同一片尿片内小便次数；"尿了两次/小便2次" → peeCount=2；"小便三次以上" → peeCount=3；未说明但有小便时默认1；纯大便时为0
   - color映射: 金黄/金黄色→"golden", 黄绿/黄绿色→"yellowgreen", 绿/绿色→"green", 深褐/褐色/深色→"dark"
   - status映射: 水样/稀→"watery", 糊状/糊糊→"mushy", 软便/软的→"soft", 条状/成形→"formed", 颗粒/硬/干→"pellet"
   - amount: 用户说"多/较多/很多"→"较多", "少/一点点"→"少量", "适量/正常"→"适量"
-  - 示例: "拉了大便黄绿色糊状的量较多" → subType="poop", color="yellowgreen", status="mushy", amount="较多"
+  - 示例: "拉了大便黄绿色糊状的量较多" → subType="poop", peeCount=0, color="yellowgreen", status="mushy", amount="较多"
+  - 示例: "尿片里小便两次" → subType="pee", peeCount=2
+  - 示例: "大小便都有，小便两次，大便黄绿色糊状" → subType="mixed", peeCount=2, color="yellowgreen", status="mushy"
 - sleep: {"sleepType": "nap|night", "action": "start|end|complete"}
   - "宝宝睡着了/开始睡觉" → action="start"
   - "宝宝醒了/睡醒了" → action="end"

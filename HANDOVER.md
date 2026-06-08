@@ -7,13 +7,150 @@
 - **远端仓库**：`https://github.com/yoyoYep/baby-feeding-tracker`
 - **当前版本**：v0.9-dev
 - **最新提交**：
-  - `feat: add AI care assistant and logical day`
+  - `83fb8b0 feat: improve record timeline and voice entry`
+  - `5523309 feat: add AI care assistant and logical day`
+  - `a232751 docs: update handover and requirements`
   - `8ed50cb feat: add in-app reminders with snooze`
   - `4609af3 feat: add QQ Music mini program jump`
   - `ec49daf Improve feeding plan and record overlap handling`
-- **当前状态**：核心功能完成 + 每日待办 P0 + 独立记录时间轴 + 喂奶计划 P0 + 程序内提醒（默认关闭，可配置） + QQ 音乐跳转 + 配置/待办云端化 + 生长精确百分位 + 密钥外部化 + 跨天统计/查询兜底修复 + **凌晨4点逻辑日边界** + **AI 智能照护助手** + **AI 建议语音播报能力保留（按钮隐藏，腾讯云 TTS 待确认）**
+- **当前状态**：核心功能完成 + 每日待办 P0 + 独立记录时间轴 + 首页记录筛选 + 喂奶计划 P0 + 程序内提醒（默认关闭，可配置） + QQ 音乐跳转 + 配置/待办云端化 + 生长精确百分位 + 密钥外部化 + 跨天统计/查询兜底修复 + **凌晨4点逻辑日边界** + **AI 智能照护助手** + **语音多记录解析/直接编辑记录** + **AI 建议语音播报能力保留（按钮隐藏，腾讯云 TTS 待确认）**
 
 > 真实配置和密钥文件必须继续保持 gitignored；不要提交 `secret.js`、`config.js`、微信开发者工具真实配置。
+
+---
+
+## 2026-06-01 最新交接重点
+
+### 本轮新增/调整概览
+
+#### 1. 语音录入支持多条同类型记录
+
+**目标**：一句话可录入多条相同类型事件，例如：
+- `5月28号12:10到12:30和14:39到15:10都喝了100ml奶`
+- `5月28号12:10和14:39都换了尿片`
+
+**实现原则**：
+- 优先走 `parseRecord` 云函数 + DeepSeek 解析，不把多记录能力限制在本地正则。
+- DeepSeek 必须返回完整客户端本地日期时间，格式为 `YYYY-MM-DD HH:mm`。
+- `5月28号`、`上个月28号`、`28号` 等日期都要求由 DeepSeek 按客户端本地时间解析成完整日期；客户端只做兼容兜底，不再主动把日期“改错”。
+- 多条独立事件返回 `records[]`，可覆盖 feeding、diaper、sleep、bath、health_temp、health_med、supplement、growth。
+
+**核心文件**：
+- `cloudfunctions/parseRecord/index.js`
+  - prompt 增加当前客户端本地时间、时区、完整日期输出要求。
+  - 增加多时间点/多时间段共享动作的 `records[]` 规范。
+  - 明确 `5月28号`、`上个月28号`、`120:30` ASR 误识别等解析要求。
+- `miniprogram/utils/voice-parser.js`
+  - 调云函数时传 `now`、`localNow`、`timezoneOffsetMinutes`。
+  - 支持 DeepSeek 返回 `records[]`。
+  - `resolveTime()` 增强完整日期、中文日期和旧格式兼容。
+  - 本地多喂奶解析仅作为云函数不可用时的兜底。
+- `tests/voice-parser-multi.test.js`
+  - 覆盖多条喂奶、多条尿片、完整日期、客户端本地时间传参。
+
+**部署注意**：需要重新部署 `cloudfunctions/parseRecord`，否则线上仍会使用旧 prompt。
+
+#### 2. 语音识别结果改为直接编辑记录
+
+**目标**：识别结果点“编辑”后直接编辑结构化记录，不再编辑原文。
+
+**实现**：
+- `miniprogram/components/voice-input/voice-input.js|wxml|wxss`
+  - 新增“编辑记录”弹层。
+  - 单条和多条记录都可编辑。
+  - 可改日期、开始时间、结束时间、喂奶奶量、尿片类型、体温、用药、辅食、洗澡、生长记录字段。
+  - 保存后回到识别结果确认页，再点“确认”才入库。
+  - 弹层遮罩增加 `catchtouchmove="noop"`，避免拖动编辑层时带动首页滚动。
+
+**注意**：
+- 语音组件仍保留手动文字输入入口；只是确认弹窗里的“编辑”不再编辑原文。
+- 单条记录编辑不再触发父页面 `edit` 跳转；直接在语音组件内编辑字段。
+
+#### 3. 睡眠/喂奶时间线与重叠校验
+
+**时间线布局目标**：
+- 记录时间轴的连续事件左侧固定为睡眠，右侧固定为喂奶。
+- 睡眠和喂奶固定作为连续事件展示，即使没有持续时间也放在连续区。
+- 洗澡如果有 duration 仍按时段展示。
+
+**重叠校验目标**：
+- 新增或更新喂奶/睡眠时，同类型时间段重叠要提示“输入存在问题”。
+- 喂奶和睡眠互相重叠不拦截。
+- 无持续时间的喂奶/睡眠如果落入已有同类型时段，也视为冲突。
+
+**核心文件**：
+- `miniprogram/utils/timeline-layout.js`
+- `miniprogram/utils/record-overlap.js`
+- `miniprogram/utils/db.js`
+- `miniprogram/pages/index/index.js`
+- `miniprogram/pages/record/record.js`
+- `tests/timeline-layout.test.js`
+- `tests/record-overlap.test.js`
+
+#### 4. 统计页增加最近 7 日喂奶耗时
+
+**实现**：
+- `miniprogram/pages/stats/stats.js|wxml|wxss`
+  - 最近 7 日趋势新增“平均喂奶耗时 (min)”柱状图。
+  - 只统计有有效 `startTime/endTime` 的 completed feeding。
+
+#### 5. 首页记录入口和记录筛选
+
+**实现**：
+- 首页日期旁边新增记录时间轴图标按钮，点击进入 `/pages/timeline/timeline`。
+- 首页记录列表新增事件筛选：
+  - 全部
+  - 喂奶
+  - 睡眠
+  - 尿布
+  - 辅食
+  - 洗澡
+  - 健康
+  - 生长
+- 筛选仅影响首页记录列表，不影响统计卡、喂奶计划和独立记录时间轴。
+- 筛选后记录数显示为 `当前筛选数量/全部数量`。
+
+**核心文件**：
+- `miniprogram/pages/index/index.js|wxml|wxss`
+
+#### 6. AI 助手进行中状态校准
+
+**问题**：顶部本地事实显示“正在睡觉 59分钟”，AI 卡片可能仍显示缓存或模型生成的“约18分钟”，两者矛盾。
+
+**修复**：
+- 本地显示层校准进行中状态：
+  - 正在睡觉：本地负责“已睡多久”
+  - DeepSeek 仍可负责“预计什么时候醒”
+  - 示例：`正在睡觉，已睡59分钟，预计18分钟后醒`
+- 云函数 `babyAssistant` prompt 和兜底也要求使用 `context.ongoing.elapsedMin` 作为已进行时长唯一可信来源。
+
+**核心文件**：
+- `miniprogram/utils/assistant-display.js`
+- `miniprogram/pages/index/index.js`
+- `cloudfunctions/babyAssistant/index.js`
+- `tests/assistant-display.test.js`
+
+**部署注意**：需要重新部署 `cloudfunctions/babyAssistant`，否则云端 prompt/兜底不生效；但首页本地显示层已能先消除明显矛盾。
+
+### 本轮提交和验证
+
+**已 push 提交**：
+- `83fb8b0 feat: improve record timeline and voice entry`
+
+**已通过检查**：
+- `node --check miniprogram\pages\index\index.js`
+- `node --check miniprogram\utils\voice-parser.js`
+- `node --check cloudfunctions\parseRecord\index.js`
+- `node --check cloudfunctions\babyAssistant\index.js`
+- `node tests\assistant-display.test.js`
+- `node tests\timeline-layout.test.js`
+- `node tests\record-overlap.test.js`
+- `node tests\voice-parser-multi.test.js`
+- `node tests\voice-action-routing.test.js`
+
+**本轮后必须记得部署的云函数**：
+1. `parseRecord`
+2. `babyAssistant`
 
 ---
 

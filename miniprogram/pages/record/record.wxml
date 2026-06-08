@@ -97,16 +97,46 @@
     </view>
   </view>
 
-  <!-- 换尿布记录 -->
+  <!-- 尿便记录 -->
   <view wx:if="{{type === 'diaper'}}" class="record-form">
-    <view class="form-title">🧷 换尿布</view>
+    <view class="form-title">{{diaperType === 'pee' ? '💧 小便记录' : (diaperType === 'mixed' ? '💧🟡 大小便记录' : '🟡 大便记录')}}</view>
     <view class="card">
       <view class="form-item">
-        <view class="form-label">类型</view>
-        <view class="tag-group">
-          <view class="tag {{diaperType === 'pee' ? 'active' : ''}}" bindtap="setDiaperType" data-val="pee">小便</view>
-          <view class="tag {{diaperType === 'poop' ? 'active' : ''}}" bindtap="setDiaperType" data-val="poop">大便</view>
-          <view class="tag {{diaperType === 'mixed' ? 'active' : ''}}" bindtap="setDiaperType" data-val="mixed">混合</view>
+        <view class="form-label">本次记录</view>
+        <view class="diaper-choice-row">
+          <view class="diaper-choice pee {{diaperType === 'pee' ? 'active' : ''}}" bindtap="setDiaperType" data-val="pee">
+            <view class="diaper-choice-icon">💧</view>
+            <view class="diaper-choice-copy">
+              <text class="diaper-choice-title">小便</text>
+              <text class="diaper-choice-desc">尿湿、尿量观察</text>
+            </view>
+          </view>
+          <view class="diaper-choice poop {{diaperType === 'poop' || diaperType === 'mixed' ? 'active' : ''}}" bindtap="setDiaperType" data-val="poop">
+            <view class="diaper-choice-icon">🟡</view>
+            <view class="diaper-choice-copy">
+              <text class="diaper-choice-title">大便</text>
+              <text class="diaper-choice-desc">颜色、形状和量</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view class="form-item" wx:if="{{diaperType === 'poop' || diaperType === 'mixed'}}">
+        <view class="diaper-mixed-row" bindtap="toggleDiaperMixed">
+          <view class="diaper-mixed-check {{diaperType === 'mixed' ? 'active' : ''}}">✓</view>
+          <view class="diaper-mixed-copy">
+            <text class="diaper-mixed-title">同时有小便</text>
+            <text class="diaper-mixed-desc">保存为大小便，统计会同时计入小便和大便</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="form-item" wx:if="{{diaperType === 'pee' || diaperType === 'mixed'}}">
+        <view class="form-label">小便次数</view>
+        <view class="pee-count-row">
+          <view class="pee-count-option {{peeCount === 1 ? 'active' : ''}}" bindtap="setPeeCount" data-val="1">1次</view>
+          <view class="pee-count-option {{peeCount === 2 ? 'active' : ''}}" bindtap="setPeeCount" data-val="2">2次</view>
+          <view class="pee-count-option {{peeCount === 3 ? 'active' : ''}}" bindtap="setPeeCount" data-val="3">3次+</view>
         </view>
       </view>
 
@@ -257,6 +287,13 @@
   <view wx:if="{{type === 'supplement'}}" class="record-form">
     <view class="form-title">🥣 辅食记录</view>
     <view class="card">
+      <view class="form-item">
+        <view class="form-label">时间</view>
+        <picker mode="time" value="{{supplementTime}}" bindchange="onSupplementTimeChange">
+          <view class="form-input picker-input">{{supplementTime || '现在'}}</view>
+        </picker>
+      </view>
+
       <view class="form-item">
         <view class="form-label">食物</view>
         <view class="tag-group">

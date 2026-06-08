@@ -24,8 +24,9 @@ Page({
     ongoingRecordId: null,
     ongoingStartTimeText: '',
 
-    // 换尿布
+    // 尿便
     diaperType: 'pee',
+    peeCount: 1,
     poopStatus: '',
     poopColor: '',
     poopAmount: '适量',
@@ -46,6 +47,7 @@ Page({
     customFood: '',
     foodAmount: '适量',
     reaction: '',
+    supplementTime: '',
     foodList: ['米粉', '南瓜泥', '红薯泥', '蛋黄', '苹果泥', '香蕉泥', '胡萝卜泥', '西兰花泥'],
 
     // 生长
@@ -74,12 +76,12 @@ Page({
   },
 
   onLoad(options) {
-    const { type = 'feeding', mode = 'timer', id, todoId = '', todoDate = '', todoTime = '' } = options
+    const { type = 'feeding', mode = 'timer', id, todoId = '', todoDate = '', todoTime = '', diaperType = '' } = options
 
     let navTitle = '添加记录'
     switch (type) {
       case 'feeding': navTitle = '喂奶记录'; break
-      case 'diaper': navTitle = '换尿布'; break
+      case 'diaper': navTitle = '尿便记录'; break
       case 'sleep': navTitle = '睡眠记录'; break
       case 'supplement': navTitle = '辅食记录'; break
       case 'bath': navTitle = '洗澡记录'; break
@@ -100,8 +102,12 @@ Page({
 
     const now = new Date()
     const todayStr = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`
+    const initialDiaperType = ['pee', 'poop', 'mixed'].includes(diaperType) ? diaperType : this.data.diaperType
+    if (type === 'diaper') {
+      navTitle = initialDiaperType === 'pee' ? '小便记录' : (initialDiaperType === 'mixed' ? '大小便记录' : '大便记录')
+    }
     wx.setNavigationBarTitle({ title: navTitle })
-    this.setData({ type, mode, navTitle, recordDate: todoDate || todayStr, todoId, todoDate, todoTime })
+    this.setData({ type, mode, navTitle, recordDate: todoDate || todayStr, todoId, todoDate, todoTime, diaperType: initialDiaperType })
 
     if (options.from === 'voice') {
       this._prefillFromVoice()
@@ -265,6 +271,7 @@ Page({
       case 'diaper':
         this.setData({
           diaperType: data.subType || 'pee',
+          peeCount: this._normalizePeeCount(data.peeCount, data.subType || 'pee'),
           poopStatus: data.status || '',
           poopColor: data.color || '',
           poopAmount: data.amount || '适量',
@@ -292,6 +299,7 @@ Page({
           customFood: foodList.includes(food) ? '' : food,
           foodAmount: data.amount || '适量',
           reaction: data.reaction || '',
+          supplementTime: fmt(result.startTime),
           note: ''
         })
         break
@@ -375,6 +383,7 @@ Page({
         case 'diaper':
           this.setData({
             diaperType: record.data && record.data.subType || 'pee',
+            peeCount: this._normalizePeeCount(record.data && record.data.peeCount, record.data && record.data.subType || 'pee'),
             poopStatus: record.data && record.data.status || '',
             poopColor: record.data && record.data.color || '',
             poopAmount: record.data && record.data.amount || '适量',
@@ -408,6 +417,7 @@ Page({
             customFood: foodList.includes(recordFood) ? '' : recordFood,
             foodAmount: record.data && record.data.amount || '适量',
             reaction: record.data && record.data.reaction || '',
+            supplementTime: startStr,
             note: record.note || ''
           })
           break
@@ -618,15 +628,33 @@ Page({
     }
   },
 
-  // === 换尿布 ===
-  setDiaperType(e) { this.setData({ diaperType: e.currentTarget.dataset.val }) },
+  // === 尿便 ===
+  setDiaperType(e) {
+    const val = e.currentTarget.dataset.val
+    const navTitle = val === 'pee' ? '小便记录' : (val === 'mixed' ? '大小便记录' : '大便记录')
+    this.setData({ diaperType: val, navTitle, peeCount: this._normalizePeeCount(this.data.peeCount, val) })
+    wx.setNavigationBarTitle({ title: navTitle })
+  },
+  toggleDiaperMixed() {
+    const diaperType = this.data.diaperType === 'mixed' ? 'poop' : 'mixed'
+    const navTitle = diaperType === 'mixed' ? '大小便记录' : '大便记录'
+    this.setData({ diaperType, navTitle, peeCount: this._normalizePeeCount(this.data.peeCount, diaperType) })
+    wx.setNavigationBarTitle({ title: navTitle })
+  },
   setPoopStatus(e) { this.setData({ poopStatus: e.currentTarget.dataset.val }) },
   setPoopColor(e) { this.setData({ poopColor: e.currentTarget.dataset.val }) },
   setPoopAmount(e) { this.setData({ poopAmount: e.currentTarget.dataset.val }) },
+  setPeeCount(e) { this.setData({ peeCount: this._normalizePeeCount(e.currentTarget.dataset.val, this.data.diaperType) }) },
   onDiaperTimeChange(e) { this.setData({ diaperTime: e.detail.value }) },
 
+  _normalizePeeCount(value, diaperType = this.data.diaperType) {
+    if (diaperType === 'poop') return 0
+    const count = parseInt(value, 10)
+    return Number.isFinite(count) && count > 0 ? Math.min(count, 3) : 1
+  },
+
   async saveDiaperRecord() {
-    const { diaperType, poopStatus, poopColor, poopAmount, diaperTime, note, editMode, editRecordId, recordDate } = this.data
+    const { diaperType, peeCount, poopStatus, poopColor, poopAmount, diaperTime, note, editMode, editRecordId, recordDate } = this.data
     const baseDate = recordDate ? new Date(recordDate) : new Date()
     let startTime = baseDate
     if (diaperTime) {
@@ -636,6 +664,7 @@ Page({
 
     const recordData = {
       subType: diaperType,
+      peeCount: this._normalizePeeCount(peeCount, diaperType),
       status: diaperType !== 'pee' ? poopStatus : '',
       color: diaperType !== 'pee' ? poopColor : '',
       amount: diaperType !== 'pee' ? poopAmount : ''
@@ -654,7 +683,8 @@ Page({
           note
         })
       }
-      this._showSuccessNotice('保存成功')
+      const successTitle = diaperType === 'pee' ? '小便已记录' : (diaperType === 'mixed' ? '大小便已记录' : '大便已记录')
+      this._showSuccessNotice(successTitle)
       setTimeout(() => wx.navigateBack(), 1500)
     } catch (e) {
       wx.showToast({ title: '保存失败', icon: 'none' })
@@ -746,9 +776,10 @@ Page({
   onCustomFoodInput(e) { this.setData({ customFood: e.detail.value, food: '' }) },
   setFoodAmount(e) { this.setData({ foodAmount: e.currentTarget.dataset.val }) },
   setReaction(e) { this.setData({ reaction: e.currentTarget.dataset.val }) },
+  onSupplementTimeChange(e) { this.setData({ supplementTime: e.detail.value }) },
 
   async saveSupplementRecord() {
-    const { food, customFood, foodAmount, reaction, note, editMode, editRecordId } = this.data
+    const { food, customFood, foodAmount, reaction, supplementTime, note, editMode, editRecordId, recordDate } = this.data
     const finalFood = food || customFood
     if (!finalFood) {
       wx.showToast({ title: '请选择或输入食物', icon: 'none' })
@@ -756,14 +787,15 @@ Page({
     }
 
     const recordData = { food: finalFood, amount: foodAmount, reaction, allergy: [] }
+    const startTime = this._buildDateTime(recordDate, supplementTime)
 
     try {
       if (editMode) {
-        await db.updateRecord(editRecordId, { data: recordData, note })
+        await db.updateRecord(editRecordId, { startTime, data: recordData, note })
       } else {
         await db.addRecord({
           type: 'supplement',
-          startTime: new Date(),
+          startTime,
           data: recordData,
           status: 'completed',
           source: 'manual',

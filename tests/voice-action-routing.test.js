@@ -199,7 +199,7 @@ console.log('\n=== 其他类型不受影响 ===')
 
 assert(
   routeAction({ type: 'diaper', data: { subType: 'pee' }, startTime: new Date(), status: 'completed' }) === 'createNewRecord',
-  '换尿布记录 → 正常创建新记录'
+  '尿便记录 → 正常创建新记录'
 )
 
 assert(

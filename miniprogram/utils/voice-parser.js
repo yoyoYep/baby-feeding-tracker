@@ -114,6 +114,22 @@ function getFutureFeedingStartTime(text) {
   return null
 }
 
+function parseSmallInteger(value) {
+  const text = String(value || '')
+  const map = { 一: 1, 二: 2, 两: 2, 三: 3 }
+  if (map[text]) return map[text]
+  const num = parseInt(text, 10)
+  return Number.isFinite(num) ? num : null
+}
+
+function parsePeeCount(text) {
+  const normalized = String(text || '')
+  const match = normalized.match(/(?:尿|小便)[了过]?(一|二|两|三|\d+)\s*次|(?:一|二|两|三|\d+)\s*次(?:尿|小便)/)
+  if (!match) return 1
+  const count = parseSmallInteger(match[1] || match[2])
+  return count && count > 0 ? Math.min(count, 3) : 1
+}
+
 function formatParserLocalDateTime(date = new Date()) {
   const y = date.getFullYear()
   const mo = (date.getMonth() + 1).toString().padStart(2, '0')
@@ -379,9 +395,21 @@ function normalizeCloudParsedRecord(parsed, text, options = {}) {
     parsed.data.amount = null
   }
 
+  const data = { ...(parsed.data || {}) }
+  if (parsed.type === 'diaper') {
+    const subType = data.subType || 'pee'
+    data.subType = subType
+    if (subType === 'poop') {
+      data.peeCount = 0
+    } else {
+      const count = parseInt(data.peeCount, 10)
+      data.peeCount = Number.isFinite(count) && count > 0 ? Math.min(count, 3) : 1
+    }
+  }
+
   return {
     type: parsed.type,
-    data: parsed.data || {},
+    data,
     action: futureFeedingStart ? 'start' : action,
     startTime,
     endTime,
@@ -461,7 +489,7 @@ function localParse(text) {
     return { type: 'feeding', data: { amount, action }, action, startTime: time, status, confidence: 0.6 }
   }
 
-  if (/尿[布片不]|拉|大便|小便|换[了过]|屎|便便|粑粑/.test(normalized)) {
+  if (/尿[布片不了过]?|拉|大便|小便|换[了过]|屎|便便|粑粑/.test(normalized)) {
     const time = parseTimeExpression(normalized)
     let subType = 'mixed'
     if (/小便|尿/.test(normalized) && !/大便|拉|屎|粑粑/.test(normalized)) subType = 'pee'
@@ -485,7 +513,8 @@ function localParse(text) {
     else if (/条状|成形/.test(normalized)) status = 'formed'
     else if (/颗粒|硬/.test(normalized)) status = 'pellet'
 
-    return { type: 'diaper', data: { subType, status, color, amount }, startTime: time, status: 'completed', confidence: 0.6 }
+    const peeCount = subType === 'poop' ? 0 : parsePeeCount(normalized)
+    return { type: 'diaper', data: { subType, peeCount, status, color, amount }, startTime: time, status: 'completed', confidence: 0.6 }
   }
 
   if (/睡[着了觉]|醒[了来]|入睡|起[来床]/.test(normalized)) {
@@ -566,7 +595,7 @@ function getConfirmText(result) {
   }
 
   const typeNames = {
-    feeding: '喂奶', diaper: '换尿布', sleep: '睡眠',
+    feeding: '喂奶', diaper: '尿便', sleep: '睡眠',
     health_temp: '体温', health_med: '用药', supplement: '辅食',
     growth: '生长记录', bath: '洗澡'
   }
@@ -588,7 +617,8 @@ function getConfirmText(result) {
       const subTypeNames = { pee: '小便', poop: '大便', mixed: '大小便' }
       const colorNames = { golden: '金黄', yellowgreen: '黄绿', green: '绿色', dark: '深褐' }
       const statusNames = { watery: '水样', mushy: '糊状', soft: '软便', formed: '条状', pellet: '颗粒' }
-      desc += ` ${subTypeNames[result.data.subType] || ''}`
+      desc = subTypeNames[result.data.subType] || desc
+      if (result.data.subType !== 'poop' && result.data.peeCount > 1) desc += ` ${result.data.peeCount}次`
       if (result.data.color) desc += ` ${colorNames[result.data.color] || result.data.color}`
       if (result.data.status) desc += ` ${statusNames[result.data.status] || result.data.status}`
       if (result.data.amount) desc += ` ${result.data.amount}`

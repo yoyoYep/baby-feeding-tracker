@@ -51,6 +51,13 @@ function localMonth(date) {
   const confirmText = getConfirmText(result)
   assert(/共 2 条记录/.test(confirmText) && /100ml/.test(confirmText), '确认文案展示批量条数和奶量')
 
+  console.log('\n=== 小便次数 ===')
+
+  const peeResult = await parseVoiceText('刚刚尿了两次')
+  assert(peeResult && peeResult.type === 'diaper' && peeResult.data.subType === 'pee', '本地语音可识别小便记录')
+  assert(peeResult.data.peeCount === 2, '本地语音可识别同一片尿片小便两次')
+  assert(getConfirmText(peeResult).includes('2次'), '确认文案展示小便次数')
+
   console.log('\n=== DS records 数组兼容 ===')
 
   global.getApp = () => ({ globalData: { cloudReady: true, config: { feedingDayStartHour: 4 } } })
@@ -87,7 +94,7 @@ function localMonth(date) {
 
   const diaperResult = await parseVoiceText('上个月28号12:10和14:39都换了尿片')
   assert(diaperResult && diaperResult.type === 'batch', '客户端接受 DS 返回的 records 数组')
-  assert(diaperResult.records.length === 2 && diaperResult.records.every(record => record.type === 'diaper'), 'DS 可返回两条尿片记录')
+  assert(diaperResult.records.length === 2 && diaperResult.records.every(record => record.type === 'diaper'), 'DS 可返回两条尿便记录')
   assert(diaperResult.records.every(record => localMonth(record.startTime) === 5), 'DS 返回完整日期时客户端按完整日期展示')
   assert(getConfirmText(diaperResult).includes('共 2 条记录'), 'DS 批量记录共用批量确认文案')
 

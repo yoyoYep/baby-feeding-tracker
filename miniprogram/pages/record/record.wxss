@@ -116,6 +116,164 @@
   border-radius: 50%;
 }
 
+.diaper-choice-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16rpx;
+}
+
+.diaper-choice {
+  min-height: 148rpx;
+  box-sizing: border-box;
+  padding: 18rpx;
+  border-radius: 14rpx;
+  border: 2rpx solid #ECEFF3;
+  background: #F8FAFC;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.diaper-choice.active {
+  background: #fff;
+  box-shadow: 0 8rpx 18rpx rgba(36, 65, 92, 0.08);
+}
+
+.diaper-choice.pee.active {
+  border-color: #69C6D3;
+}
+
+.diaper-choice.poop.active {
+  border-color: #E7B74D;
+}
+
+.diaper-choice-icon {
+  width: 58rpx;
+  height: 58rpx;
+  border-radius: 50%;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+}
+
+.diaper-choice.pee .diaper-choice-icon {
+  background: #E8F8FA;
+}
+
+.diaper-choice.poop .diaper-choice-icon {
+  background: #FFF6DC;
+}
+
+.diaper-choice-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.diaper-choice-title {
+  margin-top: 12rpx;
+  font-size: 31rpx;
+  font-weight: 700;
+  color: #222;
+  line-height: 1.2;
+}
+
+.diaper-choice-desc {
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: #7A8794;
+  line-height: 1.3;
+}
+
+.diaper-choice.pee.active .diaper-choice-title {
+  color: #20818E;
+}
+
+.diaper-choice.poop.active .diaper-choice-title {
+  color: #9A6A00;
+}
+
+.diaper-mixed-row {
+  min-height: 86rpx;
+  box-sizing: border-box;
+  padding: 16rpx 18rpx;
+  border-radius: 12rpx;
+  background: #FFF9EA;
+  border: 1rpx solid #F2D99A;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.diaper-mixed-check {
+  width: 42rpx;
+  height: 42rpx;
+  border-radius: 50%;
+  border: 2rpx solid #D7B762;
+  color: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24rpx;
+  font-weight: 700;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.diaper-mixed-check.active {
+  background: #D09A21;
+  border-color: #D09A21;
+  color: #fff;
+}
+
+.diaper-mixed-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.diaper-mixed-title {
+  font-size: 27rpx;
+  font-weight: 700;
+  color: #5E4A16;
+  line-height: 1.2;
+}
+
+.diaper-mixed-desc {
+  margin-top: 4rpx;
+  font-size: 22rpx;
+  color: #8B762F;
+  line-height: 1.3;
+}
+
+.pee-count-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12rpx;
+}
+
+.pee-count-option {
+  height: 72rpx;
+  border-radius: 12rpx;
+  background: #F5F8FA;
+  border: 1rpx solid #E7EEF3;
+  color: #66717D;
+  font-size: 28rpx;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.pee-count-option.active {
+  background: #E8F8FA;
+  border-color: #69C6D3;
+  color: #20818E;
+}
+
 .picker-input {
   color: #333;
 }

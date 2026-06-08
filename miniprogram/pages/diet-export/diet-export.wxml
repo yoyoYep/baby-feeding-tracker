@@ -1,0 +1,76 @@
+<top-nav title="饮食记录导出" show-back="{{true}}" fallback-url="/pages/more/more" />
+
+<view class="container diet-export-page">
+  <view class="card control-card">
+    <view class="field-row">
+      <text class="field-label">开始日期</text>
+      <picker mode="date" value="{{startDate}}" bindchange="onStartDateChange">
+        <view class="field-picker">{{startDate}}</view>
+      </picker>
+    </view>
+
+    <view class="field-row">
+      <text class="field-label">结束日期</text>
+      <picker mode="date" value="{{endDate}}" bindchange="onEndDateChange">
+        <view class="field-picker">{{endDate}}</view>
+      </picker>
+    </view>
+
+    <view class="field-row">
+      <text class="field-label">天数标记</text>
+      <input class="field-input" value="{{dayLabel}}" placeholder="第一天" bindinput="onDayLabelInput" />
+    </view>
+
+    <view class="range-text">{{rangeText}}</view>
+    <view class="record-count">饮食记录 {{recordCount}} 条</view>
+
+    <view class="action-row">
+      <button class="btn-secondary action-btn" loading="{{loading}}" bindtap="loadRecords">刷新预览</button>
+      <button class="btn-primary action-btn primary" loading="{{saving}}" bindtap="saveImage">
+        {{sheetTabs.length > 1 ? '保存全部图片' : '保存图片'}}
+      </button>
+    </view>
+  </view>
+
+  <view class="card suggestion-card">
+    <view class="section-title">饮食建议</view>
+    <view class="suggestion-row" wx:for="{{suggestionLines}}" wx:key="id">
+      <text class="suggestion-index">{{index + 1}}.</text>
+      <input
+        class="suggestion-input"
+        value="{{item.value}}"
+        data-index="{{index}}"
+        bindinput="onSuggestionInput" />
+    </view>
+  </view>
+
+  <view class="preview-head">
+    <text class="section-title">导出预览</text>
+  </view>
+
+  <scroll-view wx:if="{{sheetTabs.length > 1}}" scroll-x class="sheet-tabs" show-scrollbar="{{false}}">
+    <view class="sheet-tab-row">
+      <view
+        class="sheet-tab {{activeSheetIndex === index ? 'active' : ''}}"
+        wx:for="{{sheetTabs}}"
+        wx:key="id"
+        data-index="{{index}}"
+        bindtap="selectSheet">
+        <text class="sheet-tab-date">{{item.label}}</text>
+        <text class="sheet-tab-count">{{item.count}}条</text>
+      </view>
+    </view>
+  </scroll-view>
+
+  <view class="preview-shell">
+    <canvas
+      type="2d"
+      id="dietExportCanvas"
+      class="preview-canvas"
+      style="width: {{canvasCssWidth}}px; height: {{canvasCssHeight}}px;">
+    </canvas>
+    <view wx:if="{{!previewDrawn}}" class="preview-empty">
+      <text>{{loading ? '加载记录中...' : (previewErrorText || '生成预览中...')}}</text>
+    </view>
+  </view>
+</view>

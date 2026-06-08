@@ -18,6 +18,13 @@ Page({
         url: '/pages/stats/stats'
       },
       {
+        title: '饮食记录导出',
+        subtitle: '生成可打印的每日饮食记录表',
+        icon: '🧾',
+        accent: 'diet',
+        url: '/pages/diet-export/diet-export'
+      },
+      {
         title: '生长曲线',
         subtitle: '查看身高、体重、头围趋势',
         icon: '📏',

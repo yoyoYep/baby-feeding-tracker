@@ -72,14 +72,23 @@
         <text class="stat-label">喂奶(次)</text>
       </view>
       <view class="stat-item">
-        <view class="stat-icon">💧</view>
+        <view class="stat-icon">🥛</view>
         <text class="stat-value">{{todayStats.totalAmount}}</text>
         <text class="stat-label">总奶量(ml)</text>
       </view>
       <view class="stat-item">
-        <view class="stat-icon">🧷</view>
-        <text class="stat-value">{{todayStats.diaperCount}}</text>
-        <text class="stat-label">换尿布(次)</text>
+        <view class="stat-icon">💧</view>
+        <view class="diaper-stat-pair">
+          <view class="diaper-stat-mini pee">
+            <text class="diaper-stat-num">{{todayStats.peeCount}}</text>
+            <text class="diaper-stat-label">小</text>
+          </view>
+          <view class="diaper-stat-mini poop">
+            <text class="diaper-stat-num">{{todayStats.poopCount}}</text>
+            <text class="diaper-stat-label">大</text>
+          </view>
+        </view>
+        <text class="stat-label">尿便(次)</text>
       </view>
       <view class="stat-item">
         <view class="stat-icon">💤</view>
@@ -121,20 +130,22 @@
   </view>
 
   <view wx:if="{{isToday && feedingPlan && feedingPlan.enabled}}" class="card feeding-plan-card {{feedingPlan.status}}">
-    <view class="feeding-plan-main">
-      <view class="feeding-plan-icon">🍼</view>
-      <view class="feeding-plan-copy">
-        <text class="feeding-plan-title">{{feedingPlan.title}}</text>
-        <text class="feeding-plan-sub">{{feedingPlan.nextTimeLabel || feedingPlan.reminderText}}</text>
-      </view>
-      <view wx:if="{{feedingPlan.estimatedNextTimeLabel}}" class="feeding-plan-estimate">
-        <text class="feeding-plan-estimate-label">下次预估</text>
-        <text class="feeding-plan-estimate-time">{{feedingPlan.estimatedNextTimeLabel}}</text>
+    <view class="feeding-plan-header">
+      <view class="feeding-plan-leading">
+        <view class="feeding-plan-icon">🍼</view>
+        <view class="feeding-plan-copy">
+          <text class="feeding-plan-title">{{feedingPlan.title}}</text>
+          <text class="feeding-plan-sub">{{feedingPlan.nextTimeLabel || feedingPlan.reminderText}}</text>
+        </view>
       </view>
       <view class="feeding-plan-count">
         <text class="feeding-plan-count-num">{{feedingPlan.completedCount}}/{{feedingPlan.targetCount}}</text>
         <text class="feeding-plan-count-label">今日</text>
       </view>
+    </view>
+    <view wx:if="{{feedingPlan.estimatedNextTimeLabel}}" class="feeding-plan-estimate">
+      <text class="feeding-plan-estimate-label">下次预估</text>
+      <text class="feeding-plan-estimate-time">{{feedingPlan.estimatedNextTimeLabel}}</text>
     </view>
     <view class="feeding-plan-meta">
       <text>{{feedingPlan.amount}}ml</text>
@@ -152,8 +163,8 @@
       </view>
     </scroll-view>
     <view wx:if="{{feedingPlan.warning}}" class="feeding-plan-warning">{{feedingPlan.warning}}</view>
-    <view wx:if="{{aiAssistant || aiAssistantLoading}}" class="ai-assistant-section">
-      <view class="ai-assistant-divider"></view>
+
+    <view wx:if="{{aiAssistant || aiAssistantLoading || earlyEducationSuggestion}}" class="care-suggestion-card">
       <view wx:if="{{aiAssistant}}" class="ai-assistant-content">
         <view class="ai-assistant-header">
           <text class="ai-assistant-icon">💡</text>
@@ -170,10 +181,20 @@
         <view wx:if="{{aiAssistant.suggestions.length}}" class="ai-assistant-suggestions">
           <text wx:for="{{aiAssistant.suggestions}}" wx:key="index" class="ai-assistant-suggestion">· {{item}}</text>
         </view>
-        <text wx:if="{{aiAssistantReasonText}}" class="ai-assistant-reason">{{aiAssistantReasonText}}</text>
       </view>
       <view wx:elif="{{aiAssistantLoading}}" class="ai-assistant-loading">
         <text class="ai-assistant-loading-text">AI 分析中...</text>
+      </view>
+
+      <view wx:if="{{earlyEducationSuggestion}}" class="early-education-content {{aiAssistant || aiAssistantLoading ? 'with-ai' : ''}}">
+        <view class="early-education-topline">
+          <text class="early-education-label">早教</text>
+          <text class="early-education-duration">{{earlyEducationSuggestion.durationText}}</text>
+        </view>
+        <view class="early-education-main">
+          <text class="early-education-title">{{earlyEducationSuggestion.title}}</text>
+          <text class="early-education-text">{{earlyEducationSuggestion.text}}</text>
+        </view>
       </view>
     </view>
   </view>
@@ -221,9 +242,13 @@
       <view class="action-icon feeding-icon">🍼</view>
       <text>喂奶</text>
     </view>
-    <view class="action-item" bindtap="quickRecord" data-type="diaper">
-      <view class="action-icon diaper-icon">🧷</view>
-      <text>换尿布</text>
+    <view class="action-item" bindtap="quickRecord" data-type="diaper" data-diaper-type="pee">
+      <view class="action-icon pee-icon">💧</view>
+      <text>小便</text>
+    </view>
+    <view class="action-item" bindtap="quickRecord" data-type="diaper" data-diaper-type="poop">
+      <view class="action-icon poop-icon">🟡</view>
+      <text>大便</text>
     </view>
     <view class="action-item" bindtap="quickRecord" data-type="sleep">
       <view class="action-icon sleep-icon">💤</view>

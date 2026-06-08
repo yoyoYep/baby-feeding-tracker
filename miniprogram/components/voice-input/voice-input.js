@@ -2,7 +2,7 @@ const { parseVoiceText, getConfirmText } = require('../../utils/voice-parser')
 
 const TYPE_NAMES = {
   feeding: '喂奶',
-  diaper: '换尿布',
+  diaper: '尿便',
   sleep: '睡眠',
   bath: '洗澡',
   health_temp: '体温',
@@ -55,6 +55,7 @@ function buildEditableRecord(record, index) {
     endTimeStr: end ? formatTimeValue(end) : '',
     hasEndTime: !!end,
     amountText: data.amount !== undefined && data.amount !== null ? String(data.amount) : '',
+    peeCountText: data.peeCount !== undefined && data.peeCount !== null ? String(data.peeCount) : '1',
     tempText: data.value !== undefined && data.value !== null ? String(data.value) : '',
     dosageText: data.dosage !== undefined && data.dosage !== null ? String(data.dosage) : '',
     foodText: data.food || '',
@@ -84,6 +85,12 @@ function cleanEditedRecord(item) {
   }
   if (item.type === 'diaper') {
     data.subType = data.subType || 'pee'
+    if (data.subType === 'poop') {
+      data.peeCount = 0
+    } else {
+      const peeCount = parseInt(item.peeCountText, 10)
+      data.peeCount = Number.isFinite(peeCount) && peeCount > 0 ? Math.min(peeCount, 3) : 1
+    }
   }
   if (item.type === 'supplement') {
     data.food = (item.foodText || '').trim()
@@ -365,8 +372,14 @@ Component({
       const index = e.currentTarget.dataset.index
       const subType = e.currentTarget.dataset.val
       const records = this.data.editingRecords.slice()
-      records[index].data = { ...(records[index].data || {}), subType }
+      const current = records[index].data || {}
+      records[index].data = { ...current, subType, peeCount: subType === 'poop' ? 0 : (current.peeCount || 1) }
+      records[index].peeCountText = subType === 'poop' ? '0' : (records[index].peeCountText === '0' ? '1' : records[index].peeCountText || '1')
       this.setData({ editingRecords: records })
+    },
+
+    onBatchPeeCount(e) {
+      this.updateEditingRecord(e.currentTarget.dataset.index, { peeCountText: e.currentTarget.dataset.val })
     },
 
     onBatchFoodInput(e) {

@@ -13,7 +13,23 @@ Page({
     weekFeeding: [],
     weekFeedingDuration: [],
     weekSleep: [],
-    weekDiaper: []
+    weekDiaper: [],
+    monthRangeText: '',
+    monthSummary: {
+      activeDays: 0,
+      feedingCount: 0,
+      totalAmount: 0,
+      avgDailyAmount: 0,
+      avgFeedingDuration: '-',
+      totalSleepHours: '0.0',
+      avgSleepHours: '0.0',
+      peeCount: 0,
+      poopCount: 0
+    },
+    monthFeeding: [],
+    monthSleep: [],
+    monthDiaper: [],
+    monthChartScrollLeft: 0
   },
 
   onShow() {
@@ -27,9 +43,12 @@ Page({
         dateText: '今天'
       })
     }
-    this.loadStats()
     if (this.data.activeTab === 'week') {
       this.loadWeekData()
+    } else if (this.data.activeTab === 'month') {
+      this.loadMonthData()
+    } else {
+      this.loadStats()
     }
   },
 
@@ -38,6 +57,10 @@ Page({
     this.setData({ activeTab: tab })
     if (tab === 'week') {
       this.loadWeekData()
+    } else if (tab === 'month') {
+      this.loadMonthData()
+    } else if (tab === 'day') {
+      this.loadStats()
     }
   },
 
@@ -90,6 +113,7 @@ Page({
   },
 
   async loadWeekData() {
+    this.setData({ loading: true })
     const app = getApp()
     if (app.globalData.cloudReadyPromise) {
       await app.globalData.cloudReadyPromise
@@ -101,22 +125,65 @@ Page({
     } catch (e) {
       console.error('loadWeekData error:', e)
     }
+    this.setData({ loading: false })
   },
 
-  async _loadRecentDayRecords(days) {
-    const today = new Date()
+  async loadMonthData() {
+    this.setData({ loading: true, monthChartScrollLeft: 0 })
+    const app = getApp()
+    if (app.globalData.cloudReadyPromise) {
+      await app.globalData.cloudReadyPromise
+    }
+
+    try {
+      const records = await this._loadRecentDayRecords(30)
+      this._calcMonthTrend(records)
+    } catch (e) {
+      console.error('loadMonthData error:', e)
+    }
+    this.setData({ loading: false }, () => {
+      if (this.data.activeTab === 'month') this._scrollMonthChartsToEnd()
+    })
+  },
+
+  _scrollMonthChartsToEnd() {
+    const applyScroll = () => {
+      this.setData({ monthChartScrollLeft: 99999 })
+    }
+    if (typeof wx !== 'undefined' && wx.nextTick) {
+      wx.nextTick(applyScroll)
+    } else {
+      setTimeout(applyScroll, 0)
+    }
+  },
+
+  _getRecentDayStarts(days) {
     const app = getApp()
     const config = normalizeFeedingPlanConfig((app && app.globalData && app.globalData.config) || {})
     const dayStartHour = config.feedingDayStartHour
-    const tasks = []
+    const currentDayStart = getLogicalDayStart(new Date(), dayStartHour)
+    const dayStarts = []
     for (let i = days - 1; i >= 0; i--) {
-      const ref = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i, dayStartHour)
-      const start = getLogicalDayStart(ref, dayStartHour)
+      dayStarts.push(new Date(currentDayStart.getTime() - i * 86400000))
+    }
+    return dayStarts
+  },
+
+  async _loadRecentDayRecords(days) {
+    const dayStarts = this._getRecentDayStarts(days)
+    if (!dayStarts.length) return []
+
+    const tasks = dayStarts.map(start => async () => {
       const end = new Date(start.getTime() + 86400000)
-      tasks.push(db.getRecordsOverlappingDateRange(start, end, { lookbackDays: 2, limit: 120 }))
+      return db.getRecordsOverlappingDateRange(start, end, { lookbackDays: 2, limit: 180 })
+    })
+    const results = []
+    for (let i = 0; i < tasks.length; i += 5) {
+      const batch = tasks.slice(i, i + 5)
+      const batchResults = await Promise.all(batch.map(task => task()))
+      results.push(...batchResults)
     }
 
-    const results = await Promise.all(tasks)
     const seen = {}
     const records = []
     results.forEach(res => {
@@ -191,28 +258,27 @@ Page({
     })
   },
 
+  _countDiaperTypes(records) {
+    let peeCount = 0, poopCount = 0
+    ;(records || []).forEach(r => {
+      const sub = r.data && r.data.subType
+      const count = parseInt(r.data && r.data.peeCount, 10)
+      const safePeeCount = Number.isFinite(count) && count > 0 ? count : 1
+      if (sub === 'pee') peeCount += safePeeCount
+      else if (sub === 'poop') poopCount++
+      else { peeCount += safePeeCount; poopCount++ }
+    })
+    return { peeCount, poopCount }
+  },
+
   _calcDiaperStats(records) {
     const diapers = records.filter(r => r.type === 'diaper')
-    let peeCount = 0, poopCount = 0
-    diapers.forEach(r => {
-      const sub = r.data && r.data.subType
-      if (sub === 'pee') peeCount++
-      else if (sub === 'poop') poopCount++
-      else { peeCount++; poopCount++ }
-    })
+    const { peeCount, poopCount } = this._countDiaperTypes(diapers)
     this.setData({ diaperStats: { peeCount, poopCount, total: diapers.length } })
   },
 
   _calcWeekTrend(records) {
-    const days = []
-    const now = new Date()
-    const app = getApp()
-    const config = normalizeFeedingPlanConfig((app && app.globalData && app.globalData.config) || {})
-    const dayStartHour = config.feedingDayStartHour
-    for (let i = 6; i >= 0; i--) {
-      const ref = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i, dayStartHour)
-      days.push(getLogicalDayStart(ref, dayStartHour))
-    }
+    const days = this._getRecentDayStarts(7)
 
     const allSleeps = records.filter(r => r.type === 'sleep' && r.status === 'completed' && r.endTime)
     const weekFeeding = []
@@ -251,20 +317,142 @@ Page({
       weekSleep.push({ value: sleepH, label: `${day.getMonth() + 1}/${day.getDate()}` })
 
       const diapers = dayRecords.filter(r => r.type === 'diaper')
-      weekDiaper.push({ value: diapers.length, label: `${day.getMonth() + 1}/${day.getDate()}` })
+      const { peeCount, poopCount } = this._countDiaperTypes(diapers)
+      weekDiaper.push({
+        value: diapers.length,
+        pee: peeCount,
+        poop: poopCount,
+        displayText: peeCount || poopCount ? `${peeCount}/${poopCount}` : '',
+        label: `${day.getMonth() + 1}/${day.getDate()}`
+      })
     })
 
     const maxFeed = Math.max(...weekFeeding.map(d => d.value), 1)
     const maxFeedingDuration = Math.max(...weekFeedingDuration.map(d => d.value), 1)
     const maxSleep = Math.max(...weekSleep.map(d => d.value), 1)
-    const maxDiaper = Math.max(...weekDiaper.map(d => d.value), 1)
+    const maxDiaper = Math.max(...weekDiaper.map(d => Math.max(d.pee, d.poop)), 1)
 
     weekFeeding.forEach(d => { d.percent = Math.round(d.value / maxFeed * 100) })
     weekFeedingDuration.forEach(d => { d.percent = Math.round(d.value / maxFeedingDuration * 100) })
     weekSleep.forEach(d => { d.percent = Math.round(d.value / maxSleep * 100) })
-    weekDiaper.forEach(d => { d.percent = Math.round(d.value / maxDiaper * 100) })
+    weekDiaper.forEach(d => {
+      d.peePercent = Math.round(d.pee / maxDiaper * 100)
+      d.poopPercent = Math.round(d.poop / maxDiaper * 100)
+    })
 
     this.setData({ weekFeeding, weekFeedingDuration, weekSleep, weekDiaper })
+  },
+
+  _getDayRecords(records, dayStart, dayEnd) {
+    return (records || []).filter(r => {
+      const t = new Date(r.startTime).getTime()
+      return t >= dayStart && t < dayEnd
+    })
+  },
+
+  _getDaySleepMinutes(sleeps, dayStart, dayEnd) {
+    let sleepMin = 0
+    ;(sleeps || []).forEach(r => {
+      const rStart = new Date(r.startTime).getTime()
+      const rEnd = new Date(r.endTime).getTime()
+      if (rEnd <= rStart || rStart >= dayEnd || rEnd <= dayStart) return
+      sleepMin += (Math.min(rEnd, dayEnd) - Math.max(rStart, dayStart)) / 60000
+    })
+    return sleepMin
+  },
+
+  _formatRangeLabel(start, end) {
+    if (!start || !end) return ''
+    return `${start.getMonth() + 1}/${start.getDate()} - ${end.getMonth() + 1}/${end.getDate()}`
+  },
+
+  _calcMonthTrend(records) {
+    const days = this._getRecentDayStarts(30)
+    const allSleeps = records.filter(r => r.type === 'sleep' && r.status === 'completed' && r.endTime)
+    const monthFeeding = []
+    const monthSleep = []
+    const monthDiaper = []
+    const feedingDurations = []
+
+    let activeDays = 0
+    let feedingCount = 0
+    let totalAmount = 0
+    let totalSleepMin = 0
+    let feedingAmountDays = 0
+    let sleepDays = 0
+    let peeCount = 0
+    let poopCount = 0
+
+    days.forEach(day => {
+      const dayStart = day.getTime()
+      const dayEnd = dayStart + 86400000
+      const label = `${day.getMonth() + 1}/${day.getDate()}`
+      const dayRecords = this._getDayRecords(records, dayStart, dayEnd)
+      const feedings = dayRecords.filter(r => r.type === 'feeding' && r.status === 'completed')
+      const diapers = dayRecords.filter(r => r.type === 'diaper')
+      const sleepMin = this._getDaySleepMinutes(allSleeps, dayStart, dayEnd)
+      const sleepH = parseFloat((sleepMin / 60).toFixed(1))
+      const totalMl = feedings.reduce((sum, r) => sum + ((r.data && r.data.amount) || 0), 0)
+      const dayDurations = feedings
+        .map(r => this._getFeedingDurationMin(r))
+        .filter(min => min > 0)
+      const diaperCounts = this._countDiaperTypes(diapers)
+
+      feedingCount += feedings.length
+      totalAmount += totalMl
+      totalSleepMin += sleepMin
+      if (totalMl > 0) feedingAmountDays++
+      if (sleepMin > 0) sleepDays++
+      peeCount += diaperCounts.peeCount
+      poopCount += diaperCounts.poopCount
+      feedingDurations.push(...dayDurations)
+      if (dayRecords.length > 0 || sleepMin > 0) activeDays++
+
+      monthFeeding.push({ value: totalMl, label })
+      monthSleep.push({ value: sleepH, label })
+      monthDiaper.push({
+        value: diapers.length,
+        pee: diaperCounts.peeCount,
+        poop: diaperCounts.poopCount,
+        displayText: diaperCounts.peeCount || diaperCounts.poopCount ? `${diaperCounts.peeCount}/${diaperCounts.poopCount}` : '',
+        label
+      })
+    })
+
+    const maxFeed = Math.max(...monthFeeding.map(d => d.value), 1)
+    const maxSleep = Math.max(...monthSleep.map(d => d.value), 1)
+    const maxDiaper = Math.max(...monthDiaper.map(d => Math.max(d.pee, d.poop)), 1)
+
+    monthFeeding.forEach(d => { d.percent = Math.round(d.value / maxFeed * 100) })
+    monthSleep.forEach(d => { d.percent = Math.round(d.value / maxSleep * 100) })
+    monthDiaper.forEach(d => {
+      d.peePercent = Math.round(d.pee / maxDiaper * 100)
+      d.poopPercent = Math.round(d.poop / maxDiaper * 100)
+    })
+
+    const avgFeedingDuration = feedingDurations.length
+      ? Math.round(feedingDurations.reduce((sum, min) => sum + min, 0) / feedingDurations.length)
+      : '-'
+    const start = days[0]
+    const end = days[days.length - 1]
+
+    this.setData({
+      monthRangeText: this._formatRangeLabel(start, end),
+      monthSummary: {
+        activeDays,
+        feedingCount,
+        totalAmount,
+        avgDailyAmount: Math.round(totalAmount / Math.max(1, feedingAmountDays)),
+        avgFeedingDuration,
+        totalSleepHours: (totalSleepMin / 60).toFixed(1),
+        avgSleepHours: (totalSleepMin / 60 / Math.max(1, sleepDays)).toFixed(1),
+        peeCount,
+        poopCount
+      },
+      monthFeeding,
+      monthSleep,
+      monthDiaper
+    })
   },
 
   _getDateText(d) {

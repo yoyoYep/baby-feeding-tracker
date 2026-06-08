@@ -2,7 +2,7 @@
 
 <view class="container">
   <!-- 日期选择 -->
-  <view class="date-bar">
+  <view wx:if="{{activeTab === 'day'}}" class="date-bar">
     <view class="date-btn" bindtap="prevDay">‹</view>
     <view class="date-text">{{dateText}}</view>
     <view class="date-btn" bindtap="nextDay">›</view>
@@ -12,6 +12,7 @@
   <view class="tab-bar">
     <view class="tab-item {{activeTab === 'day' ? 'active' : ''}}" data-tab="day" bindtap="switchTab">当日统计</view>
     <view class="tab-item {{activeTab === 'week' ? 'active' : ''}}" data-tab="week" bindtap="switchTab">最近7天</view>
+    <view class="tab-item {{activeTab === 'month' ? 'active' : ''}}" data-tab="month" bindtap="switchTab">最近30天</view>
   </view>
 
   <!-- Loading -->
@@ -70,8 +71,8 @@
 
     <view class="card">
       <view class="card-header">
-        <view class="card-icon diaper-icon">🧷</view>
-        <text class="card-title">排便统计</text>
+        <view class="card-icon diaper-icon">💧</view>
+        <text class="card-title">尿便统计</text>
       </view>
       <view class="stats-row">
         <view class="stats-item">
@@ -147,14 +148,15 @@
 
     <view class="card">
       <view class="card-header">
-        <view class="card-icon diaper-icon">🧷</view>
-        <text class="card-title">排便次数趋势</text>
+        <view class="card-icon diaper-icon">💧</view>
+        <text class="card-title">尿便次数趋势</text>
       </view>
       <view class="chart-bar-group">
         <view wx:for="{{weekDiaper}}" wx:key="label" class="chart-bar-item">
-          <text class="chart-bar-value">{{item.value || ''}}</text>
-          <view class="chart-bar-track">
-            <view class="chart-bar diaper-bar" style="height: {{item.percent}}%"></view>
+          <text class="chart-bar-value">{{item.displayText}}</text>
+          <view class="chart-bar-track dual-diaper-track">
+            <view class="chart-bar diaper-pee-bar" style="height: {{item.peePercent}}%"></view>
+            <view class="chart-bar diaper-poop-bar" style="height: {{item.poopPercent}}%"></view>
           </view>
           <text class="chart-bar-label">{{item.label}}</text>
         </view>
@@ -163,6 +165,115 @@
 
     <view wx:if="{{weekFeeding.length === 0}}" class="empty-tip">
       <text>暂无数据</text>
+    </view>
+  </block>
+
+  <!-- 30天统计视图 -->
+  <block wx:if="{{activeTab === 'month' && !loading}}">
+    <view class="card month-summary-card">
+      <view class="month-summary-head">
+        <view>
+          <text class="month-summary-title">最近30天</text>
+          <text class="month-summary-range">{{monthRangeText}}</text>
+        </view>
+        <view class="month-active-pill">
+          <text class="month-active-value">{{monthSummary.activeDays}}</text>
+          <text class="month-active-label">有记录天数</text>
+        </view>
+      </view>
+      <view class="month-summary-grid">
+        <view class="month-summary-item">
+          <text class="month-summary-num feeding-color">{{monthSummary.totalAmount}}</text>
+          <text class="month-summary-label">总奶量 ml</text>
+        </view>
+        <view class="month-summary-item">
+          <text class="month-summary-num feeding-color">{{monthSummary.avgDailyAmount}}</text>
+          <text class="month-summary-label">日均奶量 ml</text>
+        </view>
+        <view class="month-summary-item">
+          <text class="month-summary-num feeding-color">{{monthSummary.feedingCount}}</text>
+          <text class="month-summary-label">喂奶次数</text>
+        </view>
+        <view class="month-summary-item">
+          <text class="month-summary-num feeding-color">{{monthSummary.avgFeedingDuration}}</text>
+          <text class="month-summary-label">均耗时 min</text>
+        </view>
+        <view class="month-summary-item">
+          <text class="month-summary-num sleep-color">{{monthSummary.totalSleepHours}}</text>
+          <text class="month-summary-label">总睡眠 h</text>
+        </view>
+        <view class="month-summary-item">
+          <text class="month-summary-num sleep-color">{{monthSummary.avgSleepHours}}</text>
+          <text class="month-summary-label">日均睡眠 h</text>
+        </view>
+        <view class="month-summary-item">
+          <text class="month-summary-num diaper-pee-color">{{monthSummary.peeCount}}</text>
+          <text class="month-summary-label">小便次数</text>
+        </view>
+        <view class="month-summary-item">
+          <text class="month-summary-num diaper-poop-color">{{monthSummary.poopCount}}</text>
+          <text class="month-summary-label">大便次数</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="card-header">
+        <view class="card-icon feeding-icon">🍼</view>
+        <text class="card-title">30天奶量趋势 (ml)</text>
+      </view>
+      <scroll-view scroll-x scroll-left="{{monthChartScrollLeft}}" class="month-chart-scroll" show-scrollbar="{{false}}">
+        <view class="month-chart-group">
+          <view wx:for="{{monthFeeding}}" wx:key="label" class="month-chart-item">
+            <text class="month-chart-value">{{item.value || ''}}</text>
+            <view class="month-chart-track">
+              <view class="chart-bar feeding-bar" style="height: {{item.percent}}%"></view>
+            </view>
+            <text class="month-chart-label">{{item.label}}</text>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+
+    <view class="card">
+      <view class="card-header">
+        <view class="card-icon sleep-icon">💤</view>
+        <text class="card-title">30天睡眠趋势 (h)</text>
+      </view>
+      <scroll-view scroll-x scroll-left="{{monthChartScrollLeft}}" class="month-chart-scroll" show-scrollbar="{{false}}">
+        <view class="month-chart-group">
+          <view wx:for="{{monthSleep}}" wx:key="label" class="month-chart-item">
+            <text class="month-chart-value">{{item.value || ''}}</text>
+            <view class="month-chart-track">
+              <view class="chart-bar sleep-bar" style="height: {{item.percent}}%"></view>
+            </view>
+            <text class="month-chart-label">{{item.label}}</text>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+
+    <view class="card">
+      <view class="card-header">
+        <view class="card-icon diaper-icon">💧</view>
+        <text class="card-title">30天尿便趋势</text>
+      </view>
+      <scroll-view scroll-x scroll-left="{{monthChartScrollLeft}}" class="month-chart-scroll" show-scrollbar="{{false}}">
+        <view class="month-chart-group">
+          <view wx:for="{{monthDiaper}}" wx:key="label" class="month-chart-item">
+            <text class="month-chart-value">{{item.displayText}}</text>
+            <view class="month-chart-track month-dual-track">
+              <view class="chart-bar diaper-pee-bar" style="height: {{item.peePercent}}%"></view>
+              <view class="chart-bar diaper-poop-bar" style="height: {{item.poopPercent}}%"></view>
+            </view>
+            <text class="month-chart-label">{{item.label}}</text>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+
+    <view wx:if="{{monthSummary.activeDays === 0}}" class="empty-tip">
+      <text>最近30天暂无数据</text>
     </view>
   </block>
 </view>

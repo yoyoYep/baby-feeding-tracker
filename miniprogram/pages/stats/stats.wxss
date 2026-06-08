@@ -31,7 +31,7 @@
   flex: 1;
   text-align: center;
   padding: 16rpx 0;
-  font-size: 26rpx;
+  font-size: 25rpx;
   color: #999;
   border-radius: 12rpx;
   transition: all 0.2s;
@@ -92,6 +92,8 @@
 .feeding-color { color: #64B5F6; }
 .sleep-color { color: #CE93D8; }
 .diaper-color { color: #FFB74D; }
+.diaper-pee-color { color: #2A95A3; }
+.diaper-poop-color { color: #B77900; }
 
 .stats-label {
   font-size: 22rpx;
@@ -132,6 +134,15 @@
   overflow: hidden;
 }
 
+.dual-diaper-track {
+  width: 48rpx;
+  gap: 4rpx;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0 4rpx;
+  box-sizing: border-box;
+}
+
 .chart-bar {
   width: 100%;
   border-radius: 18rpx;
@@ -143,11 +154,164 @@
 .feeding-duration-bar { background: linear-gradient(to top, #66BB6A, #A5D6A7); }
 .sleep-bar { background: linear-gradient(to top, #CE93D8, #E1BEE7); }
 .diaper-bar { background: linear-gradient(to top, #FFB74D, #FFCC80); }
+.dual-diaper-track .chart-bar {
+  width: 16rpx;
+}
+.diaper-pee-bar { background: linear-gradient(to top, #4DB6C3, #A7E5EA); }
+.diaper-poop-bar { background: linear-gradient(to top, #D99A1E, #FFD573); }
 
 .chart-bar-label {
   font-size: 20rpx;
   color: #999;
   margin-top: 8rpx;
+}
+
+/* 30天统计 */
+.month-summary-card {
+  padding: 26rpx;
+}
+
+.month-summary-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20rpx;
+  margin-bottom: 22rpx;
+}
+
+.month-summary-title {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #222;
+  line-height: 1.25;
+}
+
+.month-summary-range {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 23rpx;
+  color: #8A96A3;
+  line-height: 1.25;
+}
+
+.month-active-pill {
+  flex-shrink: 0;
+  min-width: 128rpx;
+  height: 72rpx;
+  border-radius: 999rpx;
+  background: #F7FBFF;
+  border: 1rpx solid #E3EEF8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.month-active-value {
+  font-size: 28rpx;
+  font-weight: 800;
+  color: #2E83C5;
+  line-height: 1.05;
+}
+
+.month-active-label {
+  margin-top: 4rpx;
+  font-size: 18rpx;
+  color: #7A8996;
+  line-height: 1;
+}
+
+.month-summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12rpx;
+}
+
+.month-summary-item {
+  min-height: 100rpx;
+  padding: 16rpx 18rpx;
+  border-radius: 8rpx;
+  background: #F8FAFC;
+  border: 1rpx solid #EEF2F6;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.month-summary-num {
+  font-size: 34rpx;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.month-summary-label {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #8A96A3;
+  line-height: 1.2;
+}
+
+.month-chart-scroll {
+  width: 100%;
+  white-space: nowrap;
+}
+
+.month-chart-group {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 10rpx;
+  min-height: 284rpx;
+  padding: 0 4rpx 2rpx;
+}
+
+.month-chart-item {
+  width: 50rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.month-chart-value {
+  width: 72rpx;
+  height: 28rpx;
+  font-size: 18rpx;
+  color: #66717D;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.month-chart-track {
+  width: 30rpx;
+  height: 178rpx;
+  margin-top: 8rpx;
+  background: #F3F5F7;
+  border-radius: 16rpx;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+
+.month-dual-track {
+  width: 44rpx;
+  gap: 4rpx;
+  justify-content: center;
+  padding: 0 4rpx;
+  box-sizing: border-box;
+}
+
+.month-dual-track .chart-bar {
+  width: 14rpx;
+}
+
+.month-chart-label {
+  margin-top: 8rpx;
+  font-size: 18rpx;
+  color: #99A1AA;
+  line-height: 1.1;
 }
 
 /* Loading */

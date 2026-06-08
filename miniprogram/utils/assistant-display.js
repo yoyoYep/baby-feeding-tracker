@@ -53,6 +53,31 @@ function extractWakeEstimateText(status) {
   return `预计${formatMinutesText(minutes)}后醒`
 }
 
+const INTERNAL_FIELD_PATTERN = /\b(context|ongoing|elapsedMin|careFacts|checks|priority|lastFeedingMinAgo|lastFeedingStartMinAgo|lastSleepEndMinAgo|nextPlannedMinutesFromNow|samePeriodSleepPattern|sleepDebtMin|babyAgeMonths|todaySleepTotalMin|todayNapCount)\b|字段|参数|JSON|数据结构/i
+
+function hasInternalAssistantField(text) {
+  return INTERNAL_FIELD_PATTERN.test(String(text || ''))
+}
+
+function sanitizeAssistantText(text) {
+  const value = String(text || '').trim()
+  if (!value || hasInternalAssistantField(value)) return ''
+  return value
+}
+
+function sanitizeAssistantForDisplay(assistant) {
+  if (!assistant) return assistant
+  const suggestions = Array.isArray(assistant.suggestions)
+    ? assistant.suggestions.map(sanitizeAssistantText).filter(Boolean).slice(0, 2)
+    : []
+  const reason = sanitizeAssistantText(assistant.reason)
+  return {
+    ...assistant,
+    suggestions,
+    reason
+  }
+}
+
 function getOngoingAssistantStatus(state = {}, now = new Date(), assistantStatus = '') {
   const sleepStart = toDate(state.ongoingSleep && state.ongoingSleep.startTime)
   if (sleepStart) {
@@ -81,6 +106,9 @@ function applyOngoingAssistantStatus(assistant, state = {}, now = new Date()) {
 module.exports = {
   formatMinutesText,
   extractWakeEstimateText,
+  hasInternalAssistantField,
+  sanitizeAssistantText,
+  sanitizeAssistantForDisplay,
   getOngoingAssistantStatus,
   applyOngoingAssistantStatus
 }

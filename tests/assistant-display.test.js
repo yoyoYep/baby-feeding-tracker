@@ -6,6 +6,9 @@
 
 const {
   extractWakeEstimateText,
+  hasInternalAssistantField,
+  sanitizeAssistantText,
+  sanitizeAssistantForDisplay,
   getOngoingAssistantStatus,
   applyOngoingAssistantStatus
 } = require('../miniprogram/utils/assistant-display')
@@ -60,6 +63,27 @@ assert(
 assert(
   extractWakeEstimateText('已睡约18分钟') === '',
   '已睡多久不会被误当成预计醒来时间'
+)
+
+assert(
+  hasInternalAssistantField('ongoing显示正在睡觉，elapsedMin=10'),
+  '能识别 AI 返回的内部字段名'
+)
+
+assert(
+  sanitizeAssistantText('ongoing显示正在睡觉，elapsedMin=10') === '',
+  '内部字段依据不会展示给用户'
+)
+
+const sanitized = sanitizeAssistantForDisplay({
+  status: '正在睡觉',
+  suggestions: ['保持安静', 'checks.sleep.needed=true'],
+  reason: 'ongoing显示正在睡觉，elapsedMin=10'
+})
+
+assert(
+  sanitized.suggestions.length === 1 && sanitized.suggestions[0] === '保持安静' && sanitized.reason === '',
+  'AI 展示内容会过滤建议和依据里的内部字段'
 )
 
 console.log('\n========================================')

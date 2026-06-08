@@ -3,7 +3,8 @@ const { getPercentile } = require('../../utils/growth-standard')
 const { buildFeedingPlan, normalizeFeedingPlanConfig, getLogicalDayStart, getLogicalDateStr, isSameLogicalDay } = require('../../utils/feeding-plan')
 const { getFeedingReminderKey, getTodoReminderKey, getSnoozeCountdownText, buildLogicalDateTime, formatTodoReminderText, isTodoCancelled } = require('../../utils/local-reminders')
 const { matchesTodoDate } = require('../../utils/todo-schedule')
-const { applyOngoingAssistantStatus } = require('../../utils/assistant-display')
+const { applyOngoingAssistantStatus, sanitizeAssistantText, sanitizeAssistantForDisplay } = require('../../utils/assistant-display')
+const { getPrimaryEarlyEducationSuggestion } = require('../../utils/early-education')
 
 const DELAYED_FEEDING_KEY = 'delayed_feeding_start'
 const DELAYED_START_MIN_MS = 5000
@@ -11,7 +12,7 @@ const RECORD_FILTER_OPTIONS = [
   { key: 'all', label: '全部' },
   { key: 'feeding', label: '喂奶' },
   { key: 'sleep', label: '睡眠' },
-  { key: 'diaper', label: '尿布' },
+  { key: 'diaper', label: '尿便' },
   { key: 'supplement', label: '辅食' },
   { key: 'bath', label: '洗澡' },
   { key: 'health', label: '健康' },
@@ -40,6 +41,8 @@ Page({
       feedingCount: 0,
       totalAmount: 0,
       diaperCount: 0,
+      peeCount: 0,
+      poopCount: 0,
       sleepHours: 0,
       avgInterval: ''
     },
@@ -59,6 +62,7 @@ Page({
     aiAssistantLoading: false,
     aiAssistantFactText: '',
     aiAssistantReasonText: '',
+    earlyEducationSuggestion: null,
     aiVoiceEnabled: false,
     aiVoiceLoading: false,
     aiVoicePlaying: false,
@@ -195,6 +199,7 @@ Page({
     this._updateFeedingPlan()
     this._startFeedingPlanTimer()
     await this.updateLastFeedingTimer()
+    this._updateEarlyEducationSuggestion()
     this._loadAiAssistant()
   },
 
@@ -305,6 +310,7 @@ Page({
         this._lastFeedingTimeBasis = ''
         this.setData({ lastFeedingAgo: '', feedingOverdue: false, lastFeedingLabel: '距上次喂奶' })
         this._updateAssistantFactText()
+        this._updateEarlyEducationSuggestion()
       }
     } catch (e) {
       console.error(e)
@@ -318,6 +324,7 @@ Page({
     const overdue = minutes >= (this._feedingThreshold || 180)
     this.setData({ lastFeedingAgo: this._formatMinutesText(minutes), feedingOverdue: overdue })
     this._updateAssistantFactText()
+    this._updateEarlyEducationSuggestion()
   },
 
   _formatMinutesText(minutes) {
@@ -434,8 +441,39 @@ Page({
     }
   },
 
+  _getPeeCount(data = {}) {
+    const subType = data.subType || 'pee'
+    if (subType === 'poop') return 0
+    const count = parseInt(data.peeCount, 10)
+    return Number.isFinite(count) && count > 0 ? count : 1
+  },
+
+  _getDiaperDisplay(data = {}) {
+    const subType = data.subType || 'pee'
+    const peeCount = this._getPeeCount(data)
+    const statusNames = { watery: '水样', mushy: '糊状', soft: '软便', formed: '条状', pellet: '颗粒' }
+    const colorNames = { golden: '金黄', yellowgreen: '黄绿', green: '绿色', dark: '深褐' }
+    const title = subType === 'poop' ? '大便' : (subType === 'mixed' ? '大小便' : '小便')
+    const icon = subType === 'pee' ? '💧' : (subType === 'mixed' ? '💧' : '🟡')
+    const parts = []
+    if (subType === 'pee') {
+      if (peeCount > 1) parts.push(`${peeCount}次`)
+    } else {
+      if (subType === 'mixed') parts.push(`小便${peeCount}次`)
+      if (data.color) parts.push(colorNames[data.color] || data.color)
+      if (data.status) parts.push(statusNames[data.status] || data.status)
+      if (data.amount) parts.push(data.amount)
+    }
+    return {
+      title,
+      desc: parts.join(' '),
+      icon,
+      diaperClass: `diaper-${subType}`
+    }
+  },
+
   _calcStats(records, start, end) {
-    let feedingCount = 0, totalAmount = 0, diaperCount = 0, sleepMinutes = 0
+    let feedingCount = 0, totalAmount = 0, diaperCount = 0, peeCount = 0, poopCount = 0, sleepMinutes = 0
     const feedingTimes = []
 
     records.forEach(r => {
@@ -448,7 +486,18 @@ Page({
           }
           break
         case 'diaper':
-          if (this._recordStartsInRange(r, start, end)) diaperCount++
+          if (this._recordStartsInRange(r, start, end)) {
+            diaperCount++
+            const subType = r.data && r.data.subType
+            if (subType === 'poop') {
+              poopCount++
+            } else if (subType === 'mixed') {
+              peeCount += this._getPeeCount(r.data || {})
+              poopCount++
+            } else {
+              peeCount += this._getPeeCount(r.data || {})
+            }
+          }
           break
         case 'sleep':
           if ((r.status === 'completed' || r.status === 'ongoing') && this._recordOverlapsRange(r, start, end)) {
@@ -477,6 +526,8 @@ Page({
       feedingCount,
       totalAmount,
       diaperCount,
+      peeCount,
+      poopCount,
       sleepHours: (sleepMinutes / 60).toFixed(1),
       avgInterval
     }
@@ -490,6 +541,8 @@ Page({
       const time = this._getTimelineDisplayTime(r, start, end)
       const timeStr = `${time.getHours().toString().padStart(2, '0')}:${time.getMinutes().toString().padStart(2, '0')}`
       let title = '', desc = ''
+      let icon = ''
+      let diaperClass = ''
 
       switch (r.type) {
         case 'feeding':
@@ -502,11 +555,14 @@ Page({
             if (dur > 0) desc += ` ${this._formatDuration(dur)}`
           }
           break
-        case 'diaper':
-          const subNames = { pee: '小便', poop: '大便', mixed: '大小便' }
-          title = '换尿布'
-          desc = subNames[r.data && r.data.subType] || ''
+        case 'diaper': {
+          const diaperDisplay = this._getDiaperDisplay(r.data || {})
+          title = diaperDisplay.title
+          desc = diaperDisplay.desc
+          icon = diaperDisplay.icon
+          diaperClass = diaperDisplay.diaperClass
           break
+        }
         case 'sleep':
           title = r.status === 'ongoing' ? '睡觉中...' : '睡眠'
           if (this._recordOverlapsRange(r, start, end)) {
@@ -569,7 +625,7 @@ Page({
           break
       }
 
-      return { ...r, title, desc, timeStr, recordedBy: r.recordedBy ? r.recordedBy.nickname || r.recordedBy.role : '' }
+      return { ...r, title, desc, timeStr, icon, diaperClass, recordedBy: r.recordedBy ? r.recordedBy.nickname || r.recordedBy.role : '' }
     })
   },
 
@@ -585,6 +641,7 @@ Page({
         this.setData({ sleepElapsed: this._formatElapsed(elapsed) })
       }
       this._updateAssistantFactText()
+      this._updateEarlyEducationSuggestion()
     }, 1000)
   },
 
@@ -1260,8 +1317,10 @@ Page({
 
   quickRecord(e) {
     const type = e.currentTarget.dataset.type
+    const diaperType = e.currentTarget.dataset.diaperType
     this.setData({ showActions: false })
-    wx.navigateTo({ url: `/pages/record/record?type=${type}` })
+    const query = type === 'diaper' && diaperType ? `&diaperType=${diaperType}` : ''
+    wx.navigateTo({ url: `/pages/record/record?type=${type}${query}` })
   },
 
   goTimeline() {
@@ -1365,6 +1424,67 @@ Page({
     } catch (e) {
       wx.showToast({ title: '保存失败', icon: 'none' })
     }
+  },
+
+  _getBabyAgeMonths(now = new Date()) {
+    const app = getApp()
+    const babyInfo = (app && app.globalData && app.globalData.babyInfo) || {}
+    if (!babyInfo.birthday) return null
+
+    const birth = new Date(babyInfo.birthday)
+    if (isNaN(birth.getTime()) || birth.getTime() > now.getTime()) return null
+    return Math.round((now.getTime() - birth.getTime()) / (30.44 * 24 * 60 * 60 * 1000) * 10) / 10
+  },
+
+  _getNextPlannedMinutesFromNow(now = new Date()) {
+    const plan = this.data.feedingPlan
+    const nextPlanItem = plan && plan.planItems ? plan.planItems.find(item => item.state === 'next') : null
+    const nextPlanTime = this._toDate(nextPlanItem && nextPlanItem.time)
+    return nextPlanTime ? Math.max(0, Math.round((nextPlanTime.getTime() - now.getTime()) / 60000)) : null
+  },
+
+  _getHighestTodayTemp(records = []) {
+    const temps = (records || [])
+      .filter(record => record && record.type === 'health_temp')
+      .map(record => Number(record.data && record.data.value))
+      .filter(value => Number.isFinite(value))
+    return temps.length ? Math.max(...temps) : null
+  },
+
+  _buildEarlyEducationContext(now = new Date()) {
+    const records = this._dayRecords || []
+    const lastFeeding = this._getLastCompletedFeeding(records) || this._lastCompletedFeedingRecord
+    const lastFeedingEnd = this._getCompletedFeedingEndTime(lastFeeding)
+    const lastSleep = this._getLastCompletedSleep(records)
+    const lastSleepEnd = this._toDate(lastSleep && lastSleep.endTime)
+    const ongoingType = this.data.ongoingSleep ? 'sleep' : (this.data.ongoingFeeding ? 'feeding' : '')
+
+    return {
+      now,
+      babyAgeMonths: this._getBabyAgeMonths(now),
+      ongoingType,
+      lastFeedingEndMinAgo: lastFeedingEnd ? Math.round((now.getTime() - lastFeedingEnd.getTime()) / 60000) : null,
+      lastSleepEndMinAgo: lastSleepEnd ? Math.round((now.getTime() - lastSleepEnd.getTime()) / 60000) : null,
+      nextPlannedMinutesFromNow: this._getNextPlannedMinutesFromNow(now),
+      highestTempC: this._getHighestTodayTemp(records)
+    }
+  },
+
+  _updateEarlyEducationSuggestion(now = new Date()) {
+    if (!this.data.isToday) {
+      if (this.data.earlyEducationSuggestion) {
+        this.setData({ earlyEducationSuggestion: null })
+      }
+      return null
+    }
+
+    const suggestion = getPrimaryEarlyEducationSuggestion(this._buildEarlyEducationContext(now))
+    const current = JSON.stringify(this.data.earlyEducationSuggestion || null)
+    const next = JSON.stringify(suggestion || null)
+    if (current !== next) {
+      this.setData({ earlyEducationSuggestion: suggestion || null })
+    }
+    return suggestion
   },
 
   // AI 助手
@@ -1488,10 +1608,11 @@ Page({
   },
 
   _getAiAssistantForDisplay(assistant, now = new Date()) {
-    return applyOngoingAssistantStatus(assistant, {
+    const calibrated = applyOngoingAssistantStatus(assistant, {
       ongoingSleep: this.data.ongoingSleep,
       ongoingFeeding: this.data.ongoingFeeding
     }, now)
+    return sanitizeAssistantForDisplay(calibrated)
   },
 
   _normalizeSpeechText(text) {
@@ -1537,7 +1658,7 @@ Page({
   },
 
   _getAiAssistantReasonText(assistant, factText = this.data.aiAssistantFactText) {
-    const reason = assistant && assistant.reason
+    const reason = sanitizeAssistantText(assistant && assistant.reason)
     if (!reason) return ''
     if (this._isRepeatedAssistantReason(reason, factText)) return ''
     return reason
@@ -1837,7 +1958,7 @@ Page({
 
     const todayDiapers = records
       .filter(r => r.type === 'diaper')
-      .map(r => ({ time: fmt(new Date(r.startTime)), type: (r.data && r.data.subType) || 'unknown' }))
+      .map(r => ({ time: fmt(new Date(r.startTime)), type: (r.data && r.data.subType) || 'unknown', peeCount: this._getPeeCount(r.data || {}) }))
 
     let ongoing = null
     if (this.data.ongoingSleep) {

@@ -78,11 +78,20 @@
           </view>
 
           <view wx:if="{{item.type === 'diaper'}}" class="batch-field full">
-            <text class="batch-label">尿片类型</text>
+            <text class="batch-label">尿便类型</text>
             <view class="batch-segments">
               <view class="batch-segment {{item.data.subType === 'pee' ? 'active' : ''}}" data-index="{{index}}" data-val="pee" bindtap="onBatchDiaperType">小便</view>
               <view class="batch-segment {{item.data.subType === 'poop' ? 'active' : ''}}" data-index="{{index}}" data-val="poop" bindtap="onBatchDiaperType">大便</view>
               <view class="batch-segment {{item.data.subType === 'mixed' ? 'active' : ''}}" data-index="{{index}}" data-val="mixed" bindtap="onBatchDiaperType">大小便</view>
+            </view>
+          </view>
+
+          <view wx:if="{{item.type === 'diaper' && item.data.subType !== 'poop'}}" class="batch-field full">
+            <text class="batch-label">小便次数</text>
+            <view class="batch-segments">
+              <view class="batch-segment {{item.peeCountText === '1' ? 'active' : ''}}" data-index="{{index}}" data-val="1" bindtap="onBatchPeeCount">1次</view>
+              <view class="batch-segment {{item.peeCountText === '2' ? 'active' : ''}}" data-index="{{index}}" data-val="2" bindtap="onBatchPeeCount">2次</view>
+              <view class="batch-segment {{item.peeCountText === '3' ? 'active' : ''}}" data-index="{{index}}" data-val="3" bindtap="onBatchPeeCount">3次+</view>
             </view>
           </view>
 

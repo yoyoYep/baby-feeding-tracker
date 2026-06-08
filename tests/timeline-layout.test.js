@@ -51,7 +51,7 @@ const records = [
     _id: 'diaper_point',
     type: 'diaper',
     startTime: new Date('2026-05-29T09:15:00+08:00'),
-    data: { subType: 'pee' },
+    data: { subType: 'pee', peeCount: 2 },
     status: 'completed'
   },
   {
@@ -89,8 +89,9 @@ assert(!!feeding && feeding.displayText === '喂奶', '时段卡片只显示操�
 assert(!!feeding && feeding.detailLines.some(line => line.label === '奶量' && line.value === '120ml'), '详细数据放入只读弹窗字段')
 assert(!!sleep && sleep.laneLeftPct === 0 && sleep.laneWidthPct === 50, '睡眠固定显示在连续区左列')
 assert(!!feeding && feeding.laneLeftPct === 50 && feeding.laneWidthPct === 50, '喂奶固定显示在连续区右列')
-assert(!!diaper && diaper.timeStr === '09:15' && diaper.desc === '小便', '点状记录显示时间和描述')
-assert(!!diaper && diaper.displayText === '换尿布', '非用药点状卡片只显示操作名')
+assert(!!diaper && diaper.timeStr === '09:15' && diaper.title === '小便' && diaper.desc === '2次', '尿便点状记录显示小便次数')
+assert(!!diaper && diaper.displayText === '小便', '尿便点状卡片直接显示小便/大便')
+assert(!!diaper && diaper.detailLines.some(line => line.label === '小便次数' && line.value === '2次'), '小便次数进入详情字段')
 assert(!!bath && bath.rangeText === '18:30 - 18:40', '洗澡 duration 字段按时间段展示')
 assert(!!temp && diaper.topRpx - temp.topRpx >= POINT_HEIGHT_RPX + POINT_GAP_RPX, '密集点状记录会向下避让，不互相叠住')
 assert(!!temp && temp.staggerX !== diaper.staggerX, '密集点状图标会横向错开')

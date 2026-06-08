@@ -4,6 +4,7 @@
     "pages/todo/todo",
     "pages/more/more",
     "pages/timeline/timeline",
+    "pages/diet-export/diet-export",
     "pages/todo-edit/todo-edit",
     "pages/record/record",
     "pages/health/health",
